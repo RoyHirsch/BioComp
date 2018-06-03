@@ -1,16 +1,35 @@
-
+##########################################
+## Test script - not for operational use !
+#########################################
+from src.Utils import parameters, read_data
 import numpy as np
-import tensorflow as tf
+import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D, AveragePooling2D
 from keras.optimizers import SGD
+from keras.layers.merge import add
+from keras.layers.normalization import BatchNormalization
+from keras.regularizers import l2
+from keras import backend as K
 
-# Generate dummy data
+
+# Load the project parameters
+
+params_file_name = './src/Utils/config.json'
+parameters = parameters(params_file_name)
+
+# load data
+pass
+
+
+# Generate dummy data - temporarly
 x_train = np.random.random((100, 100, 100, 3))
 y_train = keras.utils.to_categorical(np.random.randint(10, size=(100, 1)), num_classes=10)
 x_test = np.random.random((20, 100, 100, 3))
 y_test = keras.utils.to_categorical(np.random.randint(10, size=(20, 1)), num_classes=10)
+
+# Model build  - TODO - add model build class
 
 model = Sequential()
 # input: 100x100 images with 3 channels -> (100, 100, 3) tensors.
@@ -19,6 +38,8 @@ model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(100, 100, 3)))
 model.add(Conv2D(32, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.25))
+model.add(BatchNormalization())
+
 
 model.add(Conv2D(64, (3, 3), activation='relu'))
 model.add(Conv2D(64, (3, 3), activation='relu'))

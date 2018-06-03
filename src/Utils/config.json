@@ -1,0 +1,26 @@
+{
+    "image_size": [100 ,100],
+    "crop_size": [28, 28],
+    "batch_size": 20,
+    "data_format": "NHWC",
+
+
+    
+    "conv_kernel_size": [3, 3],
+    "conv_strides": 1,
+    "conv_depth": 3,
+    "conv_filters": [32, 64, 128],
+    "strides": [1, 1],
+    "pool_size":[2, 2],
+    "dropout": 0.25,
+
+    
+    "activation1": "Relu",
+    "activation2": "Sigmoid",
+    "loss": "mse",
+    "optimizer": "Adam",
+    "huber_delta": 0.2,
+    "leaky_relu_alpha": 0.2,
+    "pool_strides": 2
+
+}

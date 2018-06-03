@@ -1,15 +1,14 @@
 # install envoirment:
-
 python3 -m pip install --user --upgrade pip
 python3 -m pip install --user virtualenv
 python3 -m virtualenv env
+
+# activate envoirment:
 source env/bin/activate
 
-
-
-
 # install project requirments:	 
-
 pip install -r requirements.txt
 
+#  update exsist requirments to requirements file : 
+pip freeze > requirements.txt
 

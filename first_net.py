@@ -1,7 +1,7 @@
 ##########################################
 ## Test script - not for operational use !
 #########################################
-from src.Utils import parameters, read_data
+from src.Utils.parameters import parameters
 import numpy as np
 import keras
 from keras.models import Sequential
@@ -23,7 +23,7 @@ parameters = parameters(params_file_name)
 pass
 
 
-# Generate dummy data - temporarly
+# Generate dummy data - temporally
 x_train = np.random.random((100, 100, 100, 3))
 y_train = keras.utils.to_categorical(np.random.randint(10, size=(100, 1)), num_classes=10)
 x_test = np.random.random((20, 100, 100, 3))

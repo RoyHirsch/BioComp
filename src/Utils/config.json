@@ -1,7 +1,7 @@
 {
-    "image_size": [100 ,100],
-    "crop_size": [28, 28],
+    "input_shape": [100 ,100, 3],
     "batch_size": 20,
+    "epochs":10,
     "data_format": "NHWC",
 
 
@@ -9,18 +9,19 @@
     "conv_kernel_size": [3, 3],
     "conv_strides": 1,
     "conv_depth": 3,
-    "conv_filters": [32, 64, 128],
+    "conv_filters": 32,
     "strides": [1, 1],
     "pool_size":[2, 2],
     "dropout": 0.25,
 
-    
-    "activation1": "Relu",
-    "activation2": "Sigmoid",
-    "loss": "mse",
+    "learning_rate":0.001,
+    "momentum":0.9,
+    "activation1": "relu",
+    "activation2": "sigmoid",
+    "fc_activation":"softmax",
+    "loss": "categorical_crossentropy",
     "optimizer": "Adam",
-    "huber_delta": 0.2,
-    "leaky_relu_alpha": 0.2,
-    "pool_strides": 2
+    "pool_strides": 2,
+    "regularization_coeff": 0.01
 
 }

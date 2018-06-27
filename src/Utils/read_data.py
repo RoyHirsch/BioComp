@@ -306,5 +306,5 @@ model.fit_generator(generator=training_generator,
                     workers=6,
                     verbose=1)
 
-ס   # returns np array of predictions
+# returns np array of predictions
 predictions = model.predict_generator(generator=test_generator)

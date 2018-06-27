@@ -3,7 +3,7 @@ import numpy as np
 import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D, AveragePooling2D
+from keras.layers import Conv2D, Conv1D, MaxPooling1D, MaxPooling2D, AveragePooling2D
 from keras.optimizers import SGD
 from keras.layers.merge import add
 from keras.layers.normalization import BatchNormalization
@@ -47,18 +47,18 @@ class Model:
         """Add to exist model basic layer according to user specifications
         kernel size didn't added to the parameters so there will be flexibility in model build"""
         if input_layer:
-            model.add(Conv2D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+            model.add(Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
                              activation=self.activation1, input_shape=self.input_shape,
                              kernel_regularizer=l2(self.regularization_coeff)))
         else:
-            model.add(Conv2D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+            model.add(Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
                              activation=self.activation1, kernel_regularizer=l2(self.regularization_coeff)))
 
         # TODO consider add regularization to external params. consider use of other weigths initializer
         if batch_norm:
             model.add(BatchNormalization())
 
-        model.add(MaxPooling2D(pool_size=self.pool_size, strides=None))
+        model.add(MaxPooling1D(pool_size=self.pool_size, strides=None))
         if dropout:
             model.add(Dropout(self.dropout))
 
@@ -83,9 +83,26 @@ class Model:
                   validation_split=0.1, validation_data=None, validation_steps=None)
         # TODO - add validation handling
 
-    def test(self, test_data):
+    def test(self, test_data, test_labels):
 
         model = self.model
-        results = model.evaluate(test_data, batch_size=32)
+        results = model.evaluate(test_data, test_labels, batch_size=32)
         return results
+
+    def gen_train(self, training_generator, validation_generator):
+        model = self.model
+        model.fit_generator(generator=training_generator,
+                            validation_data=validation_generator,
+                            use_multiprocessing=True,
+                            workers=6,
+                            verbose=1)
+
+    def gen_test(self, test_generator):
+        model = self.model
+        predictions = model.predict_generator(generator=test_generator)
+        return predictions
+
+
+
+
 

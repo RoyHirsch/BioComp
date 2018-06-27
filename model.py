@@ -4,11 +4,13 @@ import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, Conv1D, MaxPooling1D, MaxPooling2D, AveragePooling2D
+from keras.layers import merge, Input
 from keras.optimizers import SGD
 from keras.layers.merge import add
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras import backend as K
+from keras.layers.core import Layer, Activation
 
 from src.Utils.parameters import parameters
 #from src.Utils.read_data import DataPipeline,DataGenerator
@@ -101,6 +103,38 @@ class Model:
         model = self.model
         predictions = model.predict_generator(generator=test_generator)
         return predictions
+
+    def add_residual_block(self, n_skip, kernel_size, dropout=True, batch_norm=True, input_layer=False):
+        model = self.model
+        input = Input()
+        skip_connection = input
+        conv_connection = input
+        for i in range(n_skip):
+            if i == 0 and input_layer:
+                conv_connection = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+                                activation=self.activation1, input_shape=self.input_shape,
+                                kernel_regularizer=l2(self.regularization_coeff))
+            else:
+
+                conv_connection = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+                                activation=self.activation1, kernel_regularizer=l2(self.regularization_coeff))
+
+            if batch_norm:
+                conv_connection = BatchNormalization()(conv_connection)
+
+            conv_connection = MaxPooling1D(pool_size=self.pool_size, strides=None)(conv_connection)
+            if dropout:
+                conv_connection = (Dropout(self.dropout))(conv_connection)
+
+        output = merge([skip_connection, conv_connection], mode='sum')
+        res_block = Model(input=input, output=output)
+        model.add(res_block)
+
+
+
+
+
+    # TODO add sigmoid
 
 
 

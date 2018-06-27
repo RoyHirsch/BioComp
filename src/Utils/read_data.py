@@ -81,7 +81,7 @@ class DataPipeline(object):
 			pass
 
 		else:
-			raise ValueError('No such a mode {}'.format(str(mode)))
+			raise ValueError('No such a mode {}'.format(str(self.mode)))
 
 	#########################################################################
 	# Description: Given an experiment number the function reads the SELEX and PBM data.
@@ -285,7 +285,7 @@ def oneHotZeroPad(string, maxSize=PBM_LEN):
 # Simple model to illustrate the dataPipe behavior
 ########################
 debugPath = '/Users/royhirsch/Documents/GitHub/BioComp/train_data/'
-dataObj = DataPipeline(dataRoot=debugPath, mode='Train', argsDist={})
+dataObj = DataPipeline(dataRoot=debugPath, mode='debug', argsDist={})
 
 training_generator = DataGenerator(dataObj.trainData, dataObj.trainLabel)
 validation_generator = DataGenerator(dataObj.validationData, dataObj.validationLabel)

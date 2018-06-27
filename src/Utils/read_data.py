@@ -1,7 +1,3 @@
-'''
-simple function to read and pre-process the data
-'''
-
 import os
 import time
 import keras
@@ -17,7 +13,6 @@ from keras.optimizers import SGD
 SELEX_LEN = 20
 PBM_LEN_TOTAL = 60
 PBM_LEN = 36
-
 
 #########################################################################
 # Description: This class manages the data loading to the model.
@@ -61,7 +56,6 @@ class DataPipeline(object):
 		minSampleNumber = min(sampleNumbersList)
 
 		assert (self.numberOfSamples == maxSampleNumber-minSampleNumber+1), "Num of samples is not ,matched"
-
 		return
 
 	#########################################################################
@@ -81,7 +75,7 @@ class DataPipeline(object):
 			pass
 
 		else:
-			raise ValueError('No such a mode {}'.format(str(mode)))
+			raise ValueError('No such a mode {}'.format(str(self.mode)))
 
 	#########################################################################
 	# Description: Given an experiment number the function reads the SELEX and PBM data.
@@ -210,7 +204,7 @@ class DataGenerator(keras.utils.Sequence):
 			np.random.shuffle(self.indexes)
 
 	#########################################################################
-	# Description: Generate one batch of data, evalutes and pre-process the data.
+	# Description: Generate one batch of data, evaluates and pre-process the data.
 	# Input:
 	# Output: DataGenerator obj
 	#########################################################################
@@ -284,27 +278,28 @@ def oneHotZeroPad(string, maxSize=PBM_LEN):
 # DEBUG
 # Simple model to illustrate the dataPipe behavior
 ########################
-debugPath = '/Users/royhirsch/Documents/GitHub/BioComp/train_data/'
-dataObj = DataPipeline(dataRoot=debugPath, mode='Train', argsDist={})
-
-training_generator = DataGenerator(dataObj.trainData, dataObj.trainLabel)
-validation_generator = DataGenerator(dataObj.validationData, dataObj.validationLabel)
-test_generator = TestDataGenerator(dataObj.testData)
-
-model=Sequential()
-model.add(Conv1D(filters=4, kernel_size=3, strides=1, kernel_initializer='RandomNormal', activation='relu',
-                 input_shape=(36, 4), use_bias=True, bias_initializer='RandomNormal'))
-model.add(Flatten())
-model.add(Dense(1))
-
-sgd = SGD(lr=0.001, decay=1e-5, momentum=0.9, nesterov=True)
-model.compile(optimizer=sgd, loss='mse')
-print('Start training the model.')
-model.fit_generator(generator=training_generator,
-                    validation_data=validation_generator,
-                    use_multiprocessing=True,
-                    workers=6,
-                    verbose=1)
-
-ס   # returns np array of predictions
-predictions = model.predict_generator(generator=test_generator)
+# debugPath = '/Users/royhirsch/Documents/GitHub/BioComp/train_data/'
+# dataObj = DataPipeline(dataRoot=debugPath, mode='debug', argsDist={})
+#
+# training_generator = DataGenerator(dataObj.trainData, dataObj.trainLabel)
+# validation_generator = DataGenerator(dataObj.validationData, dataObj.validationLabel)
+# test_generator = TestDataGenerator(dataObj.testData)
+#
+# model=Sequential()
+# model.add(Conv1D(filters=4, kernel_size=3, strides=1, kernel_initializer='RandomNormal', activation='relu',
+#                  input_shape=(36, 4), use_bias=True, bias_initializer='RandomNormal'))
+# model.add(Flatten())
+# model.add(Dense(1))
+#
+# sgd = SGD(lr=0.001, decay=1e-5, momentum=0.9, nesterov=True)
+# model.compile(optimizer=sgd, loss='mse')
+# print('Start training the model.')
+# model.fit_generator(generator=training_generator,
+#                     validation_data=validation_generator,
+#                     epochs=2,
+#                     use_multiprocessing=True,
+#                     workers=6,
+#                     verbose=1)
+#
+# # returns np array of predictions
+# predictions = model.predict_generator(generator=test_generator)

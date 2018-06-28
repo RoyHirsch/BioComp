@@ -1,27 +1,22 @@
 
 import numpy as np
 import keras
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, Conv1D, MaxPooling1D, MaxPooling2D, AveragePooling2D
-from keras.layers import merge, Input
+from keras.layers import Dense, Dropout, Flatten, Activation
+from keras.layers import Conv1D, MaxPooling1D
+from keras.layers import merge, Input, add
 from keras.optimizers import SGD
-from keras.layers.merge import add
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
-from keras import backend as K
-from keras.layers.core import Layer, Activation
+from keras.models import Model
 
-from src.Utils.parameters import parameters
-#from src.Utils.read_data import DataPipeline,DataGenerator
-
+from Utils.parameters import parameters
 
 # load parameters
 params_file_name = './src/Utils/config.json'
 parameters = parameters(params_file_name)
 
 
-class Model:
+class ModelFunctions:
 
     def __init__(self):
         self.input_shape = tuple(parameters["input_shape"])
@@ -39,102 +34,107 @@ class Model:
         self.epochs = parameters["epochs"]
         self.regularization_coeff = parameters["regularization_coeff"]
 
-        # initialize model
-        self.model = Sequential()
-
-    def add_conv_layer(self, kernel_size, dropout=True, batch_norm=True, input_layer=False):
-
-        model = self.model
+    def add_conv_layer(self, input_, kernel_size, dropout=True, batch_norm=True):
 
         """Add to exist model basic layer according to user specifications
         kernel size didn't added to the parameters so there will be flexibility in model build"""
-        if input_layer:
-            model.add(Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
-                             activation=self.activation1, input_shape=self.input_shape,
-                             kernel_regularizer=l2(self.regularization_coeff)))
-        else:
-            model.add(Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
-                             activation=self.activation1, kernel_regularizer=l2(self.regularization_coeff)))
+
+        output_ = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+                         activation=self.activation1,
+                         kernel_regularizer=l2(self.regularization_coeff))(input_)
 
         # TODO consider add regularization to external params. consider use of other weigths initializer
         if batch_norm:
-            model.add(BatchNormalization())
+            output_ = BatchNormalization()(output_)
 
-        model.add(MaxPooling1D(pool_size=self.pool_size, strides=None))
+        output_ = MaxPooling1D(pool_size=self.pool_size, strides=None)(output_)
         if dropout:
-            model.add(Dropout(self.dropout))
+            output_ = Dropout(self.dropout)(output_)
 
-    def add_fc_layer(self, size, dropout=False, batch_norm=False):
+        return output_
 
-        model = self.model     # TODO consider use of other weigths initializer
-        model.add(Dense(size, activation=self.fc_activation))
+    def add_fc_layer(self, input_, size, dropout=False, batch_norm=False):
+
+         # TODO consider use of other weigths initializer
+        output_ = Dense(size, activation=self.fc_activation)(input_)
         if batch_norm:
-            model.add(BatchNormalization())
+            output_ = BatchNormalization()(output_)
         if dropout:
-            model.add(Dropout(self.dropout))
+            output_ = Dropout(self.dropout)(output_)
 
-    def optimizer(self):
+        return output_
 
-        return SGD(lr=self.learning_rate, decay=1e-6, momentum=self.momentum, nesterov=True)
+    def add_residual_block(self, input_, n_skip, kernel_size, dropout=True, batch_norm=True):
+        skip_node = input_
+        conv_node = input_
+        for i in range(n_skip):
+            conv_node = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+                               activation=self.activation1, padding='same',
+                               kernel_regularizer=l2(self.regularization_coeff))(conv_node)
+            skip_node = Conv1D(filters=self.conv_filters, kernel_size=[1],
+                               strides=self.strides, padding='same')(skip_node)
 
-    def train(self, data, labels, ):
+            if batch_norm:
+                conv_node = BatchNormalization()(conv_node)
+                skip_node = BatchNormalization()(skip_node)
+
+            conv_node = MaxPooling1D(pool_size=self.pool_size, strides=None)(conv_node)
+            skip_node = MaxPooling1D(pool_size=self.pool_size, strides=None)(skip_node)
+
+            if dropout:
+                conv_node = Dropout(self.dropout)(conv_node)
+        output_ = add([skip_node, conv_node])
+
+        return output_
+
+    def add_sigmoid_layer(self, input_):
+
+        output_ = Activation('sigmoid')(input_)
+        return output_
+
+
+class BuildModel(ModelFunctions):
+
+    def __init__(self):
+        super(BuildModel, self).__init__()
+        self.model = self.base_net()            # TODO change to the general case - thr user can choose which
+                                                # TODO arch to build.
+        self.learning_rate = parameters["learning_rate"]
+        self.momentum = parameters["momentum"]
+
+    def train(self, training_generator, validation_generator):
         model = self.model
         sgd = self.optimizer()
         model.compile(loss=self.loss, optimizer=sgd)
-        model.fit(data, labels, batch_size=self.batch_size, epochs=self.epochs,
-                  validation_split=0.1, validation_data=None, validation_steps=None)
-        # TODO - add validation handling
-
-    def test(self, test_data, test_labels):
-
-        model = self.model
-        results = model.evaluate(test_data, test_labels, batch_size=32)
-        return results
-
-    def gen_train(self, training_generator, validation_generator):
-        model = self.model
         model.fit_generator(generator=training_generator,
                             validation_data=validation_generator,
                             use_multiprocessing=True,
                             workers=6,
                             verbose=1)
 
-    def gen_test(self, test_generator):
+    def test(self, test_generator):
         model = self.model
         predictions = model.predict_generator(generator=test_generator)
         return predictions
 
-    def add_residual_block(self, n_skip, kernel_size, dropout=True, batch_norm=True, input_layer=False):
-        model = self.model
-        input = Input()
-        skip_connection = input
-        conv_connection = input
-        for i in range(n_skip):
-            if i == 0 and input_layer:
-                conv_connection = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
-                                activation=self.activation1, input_shape=self.input_shape,
-                                kernel_regularizer=l2(self.regularization_coeff))
-            else:
+    def optimizer(self):
 
-                conv_connection = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
-                                activation=self.activation1, kernel_regularizer=l2(self.regularization_coeff))
+        return SGD(lr=self.learning_rate, decay=1e-6, momentum=self.momentum, nesterov=True)
 
-            if batch_norm:
-                conv_connection = BatchNormalization()(conv_connection)
-
-            conv_connection = MaxPooling1D(pool_size=self.pool_size, strides=None)(conv_connection)
-            if dropout:
-                conv_connection = (Dropout(self.dropout))(conv_connection)
-
-        output = merge([skip_connection, conv_connection], mode='sum')
-        res_block = Model(input=input, output=output)
-        model.add(res_block)
-
-
-
-
+    def base_net(self):
+        input_ = Input(shape=self.input_shape)
+        output_ = self.add_conv_layer(input_, kernel_size=3, dropout=True, batch_norm=True)
+        output_ = self.add_residual_block(output_, 1, 3)
+        output_ = Flatten()(output_)
+        output_ = self.add_fc_layer(output_, 1)
+        output_ = self.add_sigmoid_layer(output_)
+        net = Model(inputs=input_, outputs=output_)
+        return net
 
     # TODO add sigmoid
+
+
+
 
 
 

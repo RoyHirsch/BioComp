@@ -1,6 +1,7 @@
 
 import numpy as np
 import keras
+import os
 from keras.layers import Dense, Dropout, Flatten, Activation
 from keras.layers import Conv1D, MaxPooling1D
 from keras.layers import merge, Input, add
@@ -12,7 +13,7 @@ from keras.models import Model
 from Utils.parameters import parameters
 
 # load parameters
-params_file_name = './src/Utils/config.json'
+params_file_name = os.path.abspath(__file__ + '/../') + '/Utils/config.json'
 parameters = parameters(params_file_name)
 
 
@@ -114,7 +115,7 @@ class BuildModel(ModelFunctions):
 
     def test(self, test_generator):
         model = self.model
-        predictions = model.predict_generator(generator=test_generator)
+        predictions = model.predict_generator(generator=test_generator, use_multiprocessing=True, workers=6, verbose=1)
         return predictions
 
     def optimizer(self):

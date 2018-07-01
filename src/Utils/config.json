@@ -19,7 +19,7 @@
     "activation1": "relu",
     "activation2": "sigmoid",
     "fc_activation":"softmax",
-    "loss": "categorical_crossentropy",
+    "loss": "binary_crossentropy",
     "optimizer": "Adam",
     "pool_strides": 2,
     "regularization_coeff": 0.01

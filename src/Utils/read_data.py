@@ -5,8 +5,9 @@ simple function to read and pre-process the data
 import os
 import time
 import keras
+import sys
 from keras.utils import to_categorical
-
+import numpy as np
 from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import SGD
@@ -18,101 +19,67 @@ SELEX_LEN = 20
 PBM_LEN_TOTAL = 60
 PBM_LEN = 36
 
-
 #########################################################################
 # Description: This class manages the data loading to the model.
-# 			   If scans dataRoot for all the different files and will generate
+# 			   It gets the PBM and SELEX path as arguments and generates the data generators.
 # 	           the relevant train and test data per experiment.
-# Input: dataRoot - root folder that holds all the files.
-#        mode - debug for loading only experiment #1 , operation - real-world operation.
+# Input: listOfSysArgs
 #        argsDist (optional)
 #                trainPercentage - num in [0,1]
-#                isPadding       - bool
+#                batch_size      - int
+#                dim             - tupal of ints
+#                n_channels      - int
+#                n_classes       - int
 # Output: DataPipeline obj
 #########################################################################
 class DataPipeline(object):
 
-	def __init__(self, dataRoot='', mode='debug', argsDist={}):
-
+	def __init__(self, listOfSysArgs, argsDict):
 		print('+++++++++ DataPipeline was created +++++++++')
-		self.dataRoot = dataRoot
-		self.mode = mode
-		self.argsDict = argsDist
-		self.extract_samples_list()
-		self.currentSample = self.get_sample_number()
-		self.trainData, self.validationData, self.trainLabel, self.validationLabel,\
-		self.testData = self.get_data_and_labels_for_sample_number()
+
+		# Load and pre-process the data
+		self.argsDict = argsDict
+		self.trainData, self.validationData, self.trainLabel, self.validationLabel, self.testData = \
+			self._get_data_and_labels_for_sample_number(listOfSysArgs)
+
+		# batch_size, dim, n_channels, n_classes, shuffle=True)
+		# Create generators for the data
+		self.train_generator = DataGenerator(self.trainData, self.trainLabel, self.argsDict['batch_size'],
+		                                     self.argsDict['dim'], self.argsDict['n_channels'],
+		                                     self.argsDict['n_classes'], True)
+
+		self.validation_generator = DataGenerator(self.validationData, self.validationLabel,
+		                                          self.argsDict['batch_size'], self.argsDict['dim'],
+		                                          self.argsDict['n_channels'], self.argsDict['n_classes'], True)
+
+		self.test_generator = TestDataGenerator(self.testData, self.argsDict['batch_size'], self.argsDict['dim'],
+		                                        self.argsDict['n_channels'], self.argsDict['n_classes'], True)
 
 	#########################################################################
-	# Description: The function reads all the files in a root folder.
-	# Input: trainDataRoot - path to the folder that contains the files
-	# Output: filenamesList, numberOfSamples
-	#########################################################################
-	def extract_samples_list(self):
-		self.filenamesList = os.listdir(self.dataRoot)
-
-		# splitedFilenamesList contains the beginnings of the different files, like TP<num>
-		filteredFilenamesList = [filename.split('_')[0][2:] for filename in self.filenamesList]
-		sampleNumbersList = list(set(filteredFilenamesList))
-		sampleNumbersList = [int(num) for num in sampleNumbersList]
-
-		self.numberOfSamples = len(sampleNumbersList)
-		maxSampleNumber = max(sampleNumbersList)
-		minSampleNumber = min(sampleNumbersList)
-
-		assert (self.numberOfSamples == maxSampleNumber-minSampleNumber+1), "Num of samples is not ,matched"
-
-		return
-
-	#########################################################################
-	# Description: Gets the current experiment sample to work on.
-	# Input:
-	# Output: experiment number
-	#########################################################################
-	def get_sample_number(self):
-		if self.mode == 'debug':
-			return 1
-
-		elif self.mode == 'random':
-			return int(np.random.randint(min(self.numberOfSamples), max(self.numberOfSamples), 1))
-
-		elif self.mode == 'operation':
-			# TODO : finish operaion mode
-			pass
-
-		else:
-			raise ValueError('No such a mode {}'.format(str(self.mode)))
-
-	#########################################################################
-	# Description: Given an experiment number the function reads the SELEX and PBM data.
-	#              It extracts the data and pre-process it if necessary.
+	# Description: Read and pre-process the SELEX and PBM data.
 	# Input:
 	# Output: trainData, validationData, trainLabel, validationLabel, testData
 	#########################################################################
-	def get_data_and_labels_for_sample_number(self):
-		currTime = time.time()
+	def _get_data_and_labels_for_sample_number(self, listOfSysArgs):
+
+		# TODO: needs to delete before submition !
+		# Get the absulote path of the Selex and PBM files
+		trainDataRoot = os.path.realpath(__file__ + "/../../../") + '/train/'
+
+		pbmFilePath = os.path.abspath(os.path.join(trainDataRoot, listOfSysArgs[1]))
+		selexFilesPathList = []
+		for file in range(2, len(listOfSysArgs)):
+			selexFilesPathList.append(os.path.abspath(os.path.join(trainDataRoot, listOfSysArgs[file])))
 
 		# Read PBM test file:
-		pbmFile = ''
-		testFileName = 'TF{}_pbm.txt'.format(self.currentSample)
-		if testFileName not in self.filenamesList:
-			print('Error - PBM file not exist for sample number {}.'.format(self.currentSample))
-		else:
-			pbmFile = self.read_pbm_file(os.path.join(self.dataRoot, testFileName))
+		currTime = time.time()
+		pbmFile = self.read_pbm_file(pbmFilePath)
 
 		# Read the SELEX files:
 		selexFiles = []
-		for i in range(10):
-			selexFileName = 'TF{}_selex_{}.txt'.format(self.currentSample, i)
-			if (i == 0) and (testFileName not in self.filenamesList):
-					print('Error - PBM file not exist for sample number {}.'.format(self.currentSample))
-			if selexFileName in self.filenamesList:
-				selexFiles.append(self.read_selex_file(os.path.join(self.dataRoot, selexFileName)))
-			else:
-				break
-		selexFiles = np.array(selexFiles)
-		print('Loaded PBM and SELEX files for sample number: {}.\nNumber of selex files: {}.'.format(self.currentSample, i))
-
+		for selexPath in selexFilesPathList[:2]:
+			selexFiles.append(self.read_selex_file(selexPath))
+		print('Loaded PBM and SELEX files')
 		endTime = time.time()
 		print('Loading the data took {} seconds.'.format(round(endTime-currTime, 2)))
 
@@ -164,7 +131,8 @@ class DataPipeline(object):
 
 	# placeholder function
 	def process_PBM_data(self, pbmData):
-		return map(oneHot, pbmData)
+		return map(oneHotPBM, pbmData)
+		# TODO: cut irrelevant part
 
 	@staticmethod
 	def read_pbm_file(pbmFilePath):
@@ -189,7 +157,7 @@ class DataPipeline(object):
 # Output: DataGenerator obj
 #########################################################################
 class DataGenerator(keras.utils.Sequence):
-	def __init__(self, data, label, batch_size=32, dim=(36, 4), n_channels=1, n_classes=1, shuffle=True):
+	def __init__(self, data, label, batch_size, dim, n_channels, n_classes, shuffle=True):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.label = label
@@ -229,7 +197,7 @@ class DataGenerator(keras.utils.Sequence):
 # Output: TestDataGenerator obj
 #########################################################################
 class TestDataGenerator(keras.utils.Sequence):
-	def __init__(self, data, batch_size=256, dim=(36, 4), n_channels=1, n_classes=1, shuffle=True):
+	def __init__(self, data, batch_size=8, dim=(36, 4), n_channels=1, n_classes=1, shuffle=True):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.data = data
@@ -238,9 +206,15 @@ class TestDataGenerator(keras.utils.Sequence):
 		self.shuffle = shuffle
 		self.on_epoch_end()
 
+	def on_epoch_end(self):
+		# Updates indexes after each epoch
+		self.indexes = np.arange(len(list(self.data)))
+		if self.shuffle == True:
+			np.random.shuffle(self.indexes)
+
 	def __len__(self):
 		# Denotes the number of batches per epoch
-		return int(np.floor(len(self.data) / self.batch_size))
+		return int(np.floor(len(list(self.data)) / self.batch_size))
 
 	#########################################################################
 	# Description: Generate one batch of data, evaluates and pre-process the data.
@@ -251,16 +225,17 @@ class TestDataGenerator(keras.utils.Sequence):
 		indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
 
 		batchData = [self.data[k] for k in indexes]
-		batchData = list(map(oneHot, batchData))
+		batchData = list(map(oneHotPBM, batchData))
 		batchData = np.stack(batchData, axis=0)
 		return batchData
 
 ########################
 # HELPER FUNCTIONS
 ########################
-def oneHot(string):
+def oneHotPBM(string):
+	# Cut the end of each string (to keep only 36 chars)
 	trantab = str.maketrans('ACGT', '0123')
-	string = string[0] + 'ACGT'
+	string = string[0][:36] + 'ACGT'
 	data = list(string.translate(trantab))
 	return to_categorical(data)[:-4]
 
@@ -284,27 +259,3 @@ def oneHotZeroPad(string, maxSize=PBM_LEN):
 # DEBUG
 # Simple model to illustrate the dataPipe behavior
 ########################
-debugPath = '/Users/royhirsch/Documents/GitHub/BioComp/train_data/'
-dataObj = DataPipeline(dataRoot=debugPath, mode='debug', argsDist={})
-
-training_generator = DataGenerator(dataObj.trainData, dataObj.trainLabel)
-validation_generator = DataGenerator(dataObj.validationData, dataObj.validationLabel)
-test_generator = TestDataGenerator(dataObj.testData)
-
-model=Sequential()
-model.add(Conv1D(filters=4, kernel_size=3, strides=1, kernel_initializer='RandomNormal', activation='relu',
-                 input_shape=(36, 4), use_bias=True, bias_initializer='RandomNormal'))
-model.add(Flatten())
-model.add(Dense(1))
-
-sgd = SGD(lr=0.001, decay=1e-5, momentum=0.9, nesterov=True)
-model.compile(optimizer=sgd, loss='mse')
-print('Start training the model.')
-model.fit_generator(generator=training_generator,
-                    validation_data=validation_generator,
-                    use_multiprocessing=True,
-                    workers=6,
-                    verbose=1)
-
-# returns np array of predictions
-predictions = model.predict_generator(generator=test_generator)

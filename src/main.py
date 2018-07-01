@@ -22,24 +22,24 @@ def _main():
 	runFolderDir = util_functions.startLogging(isDump=False)
 	# logging.info
 
+	# TODO: read parameters from json inside DataPipeline (Roy)
 	dataPipe = read_data.DataPipeline(sys.argv, argsDict={'batch_size': 32,
 	                                                      'dim': (36,4),
 	                                                      'n_channels': 1,
 	                                                      'n_classes': 1})
 
 	# Some simple model for test
-	# conv-conv-flat-dense
 	net_model = BuildModel()
 	net_model.train(dataPipe.train_generator, dataPipe.validation_generator)
 	predictions = net_model.test(dataPipe.test_generator)
 
-	AUC = util_functions.getAUPR(dataPipe.testData, predictions, )
+	AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)
 
 if __name__ == '__main__':
 	_main()
 
 '''
-modifications for smaller test:
+modifications for smaller net test:
 TestDataGenerator - batch size
 
 model.fit_generator - steps_per_epoch

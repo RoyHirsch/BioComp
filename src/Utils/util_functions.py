@@ -34,18 +34,20 @@ def getAUPR(groundTrue, prediction, isPrint):
 	precision, recall, _ = precision_recall_curve(label, prediction)
 
 	aupr = metrics.auc(recall, precision)
-	print('AUPR={0:0.2f}',format(aupr))
+	print('AUPR = {}'.format(np.round(aupr,4)))
 
 	if isPrint:
 		import matplotlib.pyplot as plt
+		plt.figure()
 		plt.step(recall, precision, color='b', alpha=0.2,where='post')
-		plt.fill_between(recall, precision, step='post', alpha=0.2,color='b')
+		plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
 
 		plt.xlabel('Recall')
 		plt.ylabel('Precision')
 		plt.ylim([0.0, 1.05])
 		plt.xlim([0.0, 1.0])
 		plt.title('2-class Precision-Recall curve')
+		plt.show()
 
 	return
 

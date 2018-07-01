@@ -53,7 +53,8 @@ class DataPipeline(object):
 		                                          self.argsDict['n_channels'], self.argsDict['n_classes'], True)
 
 		self.test_generator = TestDataGenerator(self.testData, self.argsDict['batch_size'], self.argsDict['dim'],
-		                                        self.argsDict['n_channels'], self.argsDict['n_classes'], True)
+		                                        self.argsDict['n_channels'], self.argsDict['n_classes'], False)
+
 
 	#########################################################################
 	# Description: Read and pre-process the SELEX and PBM data.
@@ -77,7 +78,7 @@ class DataPipeline(object):
 
 		# Read the SELEX files:
 		selexFiles = []
-		for selexPath in selexFilesPathList[:2]:
+		for selexPath in selexFilesPathList:
 			selexFiles.append(self.read_selex_file(selexPath))
 		print('Loaded PBM and SELEX files')
 		endTime = time.time()
@@ -100,7 +101,10 @@ class DataPipeline(object):
 
 		# Create united data array and label array
 		# Naive assumption - cycle 0 is negative class.
-		numberLabelPositive = np.sum(len(selexsFilesList[num]) for num in range(1, len(selexsFilesList)))
+
+		# TODO: ROY 0107 a tryout cycle 0 is False and the last cycle in True
+		# numberLabelPositive = np.sum(len(selexsFilesList[num]) for num in range(1, len(selexsFilesList)))
+		numberLabelPositive = len(selexsFilesList[-1])
 		numberLabelNegative = len(selexsFilesList[0])
 
 		labelPositive = np.ones([numberLabelPositive, 1])
@@ -109,7 +113,8 @@ class DataPipeline(object):
 		# Label of all Selex data
 		label = np.concatenate((labelNegative, labelPositive), axis=0)
 
-		selexArray = np.concatenate(selexsFilesList, axis=0) # shape: [num_of_rows, 2]
+		# selexArray = np.concatenate(selexsFilesList, axis=0) # shape: [num_of_rows, 2]
+		selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1]], axis=0)
 
 		# Extract only the strings without the 'count' value
 		#  TODO: maybe use the count value ?
@@ -131,7 +136,7 @@ class DataPipeline(object):
 
 	# placeholder function
 	def process_PBM_data(self, pbmData):
-		return map(oneHotPBM, pbmData)
+		return pbmData
 		# TODO: cut irrelevant part
 
 	@staticmethod
@@ -184,7 +189,6 @@ class DataGenerator(keras.utils.Sequence):
 	#########################################################################
 	def __getitem__(self, index):
 		indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
 		batchData = [self.data[k] for k in indexes]
 		batchData = list(map(oneHotZeroPad, batchData))
 		batchData = np.stack(batchData, axis=0)
@@ -197,7 +201,7 @@ class DataGenerator(keras.utils.Sequence):
 # Output: TestDataGenerator obj
 #########################################################################
 class TestDataGenerator(keras.utils.Sequence):
-	def __init__(self, data, batch_size=8, dim=(36, 4), n_channels=1, n_classes=1, shuffle=True):
+	def __init__(self, data, batch_size, dim, n_channels, n_classes, shuffle=False):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.data = data
@@ -214,7 +218,7 @@ class TestDataGenerator(keras.utils.Sequence):
 
 	def __len__(self):
 		# Denotes the number of batches per epoch
-		return int(np.floor(len(list(self.data)) / self.batch_size))
+		return int(np.ceil(len(list(self.data)) / self.batch_size))
 
 	#########################################################################
 	# Description: Generate one batch of data, evaluates and pre-process the data.
@@ -223,7 +227,6 @@ class TestDataGenerator(keras.utils.Sequence):
 	#########################################################################
 	def __getitem__(self, index):
 		indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
 		batchData = [self.data[k] for k in indexes]
 		batchData = list(map(oneHotPBM, batchData))
 		batchData = np.stack(batchData, axis=0)
@@ -235,7 +238,7 @@ class TestDataGenerator(keras.utils.Sequence):
 def oneHotPBM(string):
 	# Cut the end of each string (to keep only 36 chars)
 	trantab = str.maketrans('ACGT', '0123')
-	string = string[0][:36] + 'ACGT'
+	string = string[:36] + 'ACGT'
 	data = list(string.translate(trantab))
 	return to_categorical(data)[:-4]
 

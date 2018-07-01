@@ -29,11 +29,11 @@ def _main():
 
 	# Some simple model for test
 	# conv-conv-flat-dense
-	net_model = BuildModel()
-	net_model.train(dataPipe.train_generator, dataPipe.validation_generator)
+	net_model = BuildModel(validation=False, model_name='base_net')
+	net_model.train(dataPipe.train_generator, dataPipe.validation_generator, steps_per_epoch=5)
 	predictions = net_model.test(dataPipe.test_generator)
 
-	AUC = util_functions.getAUPR(dataPipe.testData, predictions, )
+	AUC = util_functions.getAUPR(dataPipe.testData, predictions, False)
 
 if __name__ == '__main__':
 	_main()
@@ -48,3 +48,7 @@ predict_generator - steps
 
 read_data selexFilesPathList[:1]
 '''
+
+
+
+# TF1_pbm.txt TF1_selex_0.txt TF1_selex_1.txt TF1_selex_2.txt TF1_selex_3.txt TF1_selex_4.txt

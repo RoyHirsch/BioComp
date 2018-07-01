@@ -35,12 +35,12 @@ class ModelFunctions:
         self.epochs = parameters["epochs"]
         self.regularization_coeff = parameters["regularization_coeff"]
 
-    def add_conv_layer(self, input_, kernel_size, dropout=True, batch_norm=True):
+    def add_conv_layer(self, input_, kernel_size, filters, dropout=True, batch_norm=True):
 
         """Add to exist model basic layer according to user specifications
         kernel size didn't added to the parameters so there will be flexibility in model build"""
 
-        output_ = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+        output_ = Conv1D(filters=filters, kernel_size=kernel_size, strides=self.strides,
                          activation=self.activation1,
                          kernel_regularizer=l2(self.regularization_coeff))(input_)
 
@@ -65,14 +65,14 @@ class ModelFunctions:
 
         return output_
 
-    def add_residual_block(self, input_, n_skip, kernel_size, dropout=True, batch_norm=True):
+    def add_residual_block(self, input_, n_skip, kernel_size, filters, dropout=True, batch_norm=True):
         skip_node = input_
         conv_node = input_
         for i in range(n_skip):
-            conv_node = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
+            conv_node = Conv1D(filters=filters, kernel_size=kernel_size, strides=self.strides,
                                activation=self.activation1, padding='same',
                                kernel_regularizer=l2(self.regularization_coeff))(conv_node)
-            skip_node = Conv1D(filters=self.conv_filters, kernel_size=[1],
+            skip_node = Conv1D(filters=filters, kernel_size=[1],
                                strides=self.strides, padding='same')(skip_node)
 
             if batch_norm:
@@ -96,22 +96,32 @@ class ModelFunctions:
 
 class BuildModel(ModelFunctions):
 
-    def __init__(self):
+    def model_dict(self, mode_name):
+        return {
+            'base_net': self.base_net(),
+
+            # TODO add more archs here
+        }.get(mode_name, self.base_net())
+
+    def __init__(self, validation=True, model_name='base_net'):
         super(BuildModel, self).__init__()
-        self.model = self.base_net()            # TODO change to the general case - thr user can choose which
-                                                # TODO arch to build.
+
+        self.model = self.model_dict(model_name)
         self.learning_rate = parameters["learning_rate"]
         self.momentum = parameters["momentum"]
+        self.validation = validation
 
-    def train(self, training_generator, validation_generator):
+    def train(self, training_generator, validation_generator, steps_per_epoch=None):
         model = self.model
         sgd = self.optimizer()
         model.compile(loss=self.loss, optimizer=sgd)
+        if not self.validation:
+            validation_generator = None
         model.fit_generator(generator=training_generator,
                             validation_data=validation_generator,
                             use_multiprocessing=True,
                             workers=6,
-                            verbose=1)
+                            verbose=1, steps_per_epoch=steps_per_epoch)
 
     def test(self, test_generator):
         model = self.model
@@ -124,15 +134,59 @@ class BuildModel(ModelFunctions):
 
     def base_net(self):
         input_ = Input(shape=self.input_shape)
-        output_ = self.add_conv_layer(input_, kernel_size=3, dropout=True, batch_norm=True)
-        output_ = self.add_residual_block(output_, 1, 3)
+        output_ = self.add_conv_layer(input_=input_, kernel_size=3, filters=self.conv_filters, dropout=True, batch_norm=True)
+        output_ = self.add_residual_block(input_=output_, n_skip=1, kernel_size=3, filters=self.conv_filters)
         output_ = Flatten()(output_)
-        output_ = self.add_fc_layer(output_, 1)
-        output_ = self.add_sigmoid_layer(output_)
+        output_ = self.add_fc_layer(input_=output_, size=1)
+        output_ = self.add_sigmoid_layer(input_=output_)
         net = Model(inputs=input_, outputs=output_)
         return net
 
-    # TODO add sigmoid
+    def create_multiple_layer_model(self, layers_dict):
+        output_ = Input(shape=self.input_shape)
+
+        # dummy dict for debug
+        layers_dict = {'layers': [ 'conv', 'residual'],
+                       'reps': 4,
+                       'filters': [256, 128, 64, 32, 16],
+                       'kernel_size': 3
+                       }
+
+        layers = layers_dict["layers"]
+        reps = layers_dict['rep']
+        filters = layers_dict['filters']
+        kernel_size = layers_dict["kernel_size"]
+
+        for rep in range(reps):
+
+            for index, layer in enumerate(layers):
+                if layer == 'conv':
+                    output_ = self.add_conv_layer(output_, kernel_size=kernel_size,filters=filters[index], dropout=True,
+                                                  batch_norm=False)
+                if layer == 'reidual':
+                    # TODO decide about uniform parameters choose
+                    self.add_residual_block(output_, n_skip=2, kernel_size=kernel_size, filters=filters[index],
+                                            dropout=True, batch_norm=False,)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # TODO make conv filters as iterable list
+    # TODO exposure variables out - steps, validation(true/false) etc....
+
 
 
 

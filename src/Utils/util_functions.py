@@ -3,6 +3,7 @@ import os
 import logging
 import time
 import sys
+import numpy as np
 from sklearn.metrics import precision_recall_curve
 from sklearn import metrics
 from sklearn.metrics import average_precision_score
@@ -25,16 +26,23 @@ def dumpPDMtoFile(folder, fileName, sortedPDMStrings):
 	np.savetxt(fullFilePath, sortedPDMStrings, delimiter=" ", fmt="%s")
 	return
 
+
+'''
+How to use precision_recall_curve:
+>>> y_true = np.array([0, 0, 1, 1])
+>>> y_scores = np.array([0.1, 0.4, 0.35, 0.8])
+>>> precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
+'''
 def getAUPR(groundTrue, prediction, isPrint):
 
 	# Generate the ground true label
 	label = np.zeros([len(groundTrue)])
 	label[:100] = 1
-
 	precision, recall, _ = precision_recall_curve(label, prediction)
 
+	# The area under the precision-recall curve is AUPR
 	aupr = metrics.auc(recall, precision)
-	print('AUPR = {}'.format(np.round(aupr,4)))
+	print('AUPR = {}'.format(np.round(aupr ,4)))
 
 	if isPrint:
 		import matplotlib.pyplot as plt
@@ -46,10 +54,10 @@ def getAUPR(groundTrue, prediction, isPrint):
 		plt.ylabel('Precision')
 		plt.ylim([0.0, 1.05])
 		plt.xlim([0.0, 1.0])
-		plt.title('2-class Precision-Recall curve')
+		plt.title('Precision-Recall curve')
 		plt.show()
 
-	return
+	return aupr
 
 #####################################################################################
 # Operation functions
@@ -91,3 +99,21 @@ def startLogging(isDump=False):
 
 	logging.info("Logger was created, isDump is False.")
 	return None
+
+def getTrainSample(dataRoot):
+	sampleNum = int(np.random.randint(1,123,1))
+
+	fileList = os.listdir(dataRoot)
+	filesList = ['']
+
+	pbmFilename = 'TF{}_pbm.txt'.format(sampleNum)
+	filesList.append(pbmFilename)
+
+	for i in range(10):
+		selexFilename = 'TF{}_selex_{}.txt'.format(sampleNum, i)
+		if selexFilename in fileList:
+			filesList.append(selexFilename)
+		else:
+			break
+	return sampleNum, filesList
+

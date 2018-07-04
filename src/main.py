@@ -19,26 +19,26 @@ def _main():
 		print("Missing arguments, call should be : python main.py <pbm> <selex0> <selex1> <selex2> ... <selex5>")
 		exit(1)
 
+	# Create logger obj, print with the function : logging.info
 	runFolderDir = util_functions.startLogging(isDump=False)
-	# logging.info
 
-	# TODO: read parameters from json inside DataPipeline (Roy)
-	dataPipe = read_data.DataPipeline(sys.argv, argsDict={'batch_size': 32,
-	                                                      'dim': (36,4),
-	                                                      'n_channels': 1,
-	                                                      'n_classes': 1})
+	# Create data pipeline obj
+	dataPipe = read_data.DataPipeline(sys.argv)
 
 	# Some simple model for test
 	net_model = BuildModel()
 	net_model.train(dataPipe.train_generator, dataPipe.validation_generator)
 	predictions = net_model.test(dataPipe.test_generator)
 
+	# Evaluate the model
 	AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)
 
 if __name__ == '__main__':
 	_main()
 
 '''
+RoyH 0107
+---------
 modifications for smaller net test:
 TestDataGenerator - batch size
 

@@ -11,6 +11,7 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import SGD
+from Utils.parameters import parameters
 
 ########################
 # CONSTANTS
@@ -18,6 +19,12 @@ from keras.optimizers import SGD
 SELEX_LEN = 20
 PBM_LEN_TOTAL = 60
 PBM_LEN = 36
+
+########################
+# LOAD PARAMS
+########################
+params_file_name = os.path.abspath(__file__ + '/../') + '/config.json'
+parameters = parameters(params_file_name)
 
 #########################################################################
 # Description: This class manages the data loading to the model.
@@ -34,26 +41,22 @@ PBM_LEN = 36
 #########################################################################
 class DataPipeline(object):
 
-	def __init__(self, listOfSysArgs, argsDict):
+	def __init__(self, listOfSysArgs):
 		print('+++++++++ DataPipeline was created +++++++++')
 
 		# Load and pre-process the data
-		self.argsDict = argsDict
 		self.trainData, self.validationData, self.trainLabel, self.validationLabel, self.testData = \
 			self._get_data_and_labels_for_sample_number(listOfSysArgs)
 
-		# batch_size, dim, n_channels, n_classes, shuffle=True)
 		# Create generators for the data
-		self.train_generator = DataGenerator(self.trainData, self.trainLabel, self.argsDict['batch_size'],
-		                                     self.argsDict['dim'], self.argsDict['n_channels'],
-		                                     self.argsDict['n_classes'], True)
+		self.train_generator = DataGenerator(self.trainData, self.trainLabel, parameters['batch_size'],
+		                                     parameters['input_shape'], True)
 
-		self.validation_generator = DataGenerator(self.validationData, self.validationLabel,
-		                                          self.argsDict['batch_size'], self.argsDict['dim'],
-		                                          self.argsDict['n_channels'], self.argsDict['n_classes'], True)
+		self.validation_generator = DataGenerator(self.validationData, self.validationLabel, parameters['batch_size'],
+		                                     parameters['input_shape'], True)
 
-		self.test_generator = TestDataGenerator(self.testData, self.argsDict['batch_size'], self.argsDict['dim'],
-		                                        self.argsDict['n_channels'], self.argsDict['n_classes'], False)
+		self.test_generator = TestDataGenerator(self.testData, parameters['batch_size'],
+		                                     parameters['input_shape'], False)
 
 
 	#########################################################################
@@ -126,8 +129,8 @@ class DataPipeline(object):
 		data, label = np.split(union, 2, axis=1)
 
 		# Divide into train and validation datasets
-		trainPercentage = self.argsDict.pop('trainPercentage', 0.7)
-		slice = round(trainPercentage*data.shape[0])
+		trainPercentage = parameters['train_percentage']
+		slice = round(trainPercentage * data.shape[0])
 		trainData, validationData = data[:slice,:], data[slice:,:]
 		trainLabel, validationLabel = label[:slice], label[slice:]
 		print('Train dimensions: {}.\nValidation dimensions: {}.'.format(np.shape(trainData), np.shape(validationData)))
@@ -137,7 +140,6 @@ class DataPipeline(object):
 	# placeholder function
 	def process_PBM_data(self, pbmData):
 		return pbmData
-		# TODO: cut irrelevant part
 
 	@staticmethod
 	def read_pbm_file(pbmFilePath):
@@ -162,13 +164,13 @@ class DataPipeline(object):
 # Output: DataGenerator obj
 #########################################################################
 class DataGenerator(keras.utils.Sequence):
-	def __init__(self, data, label, batch_size, dim, n_channels, n_classes, shuffle=True):
+	def __init__(self, data, label, batch_size, dim, shuffle=True):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.label = label
 		self.data = data
-		self.n_channels = n_channels
-		self.n_classes = n_classes
+		self.n_channels = 1
+		self.n_classes = 1
 		self.shuffle = shuffle
 		self.on_epoch_end()
 
@@ -201,12 +203,12 @@ class DataGenerator(keras.utils.Sequence):
 # Output: TestDataGenerator obj
 #########################################################################
 class TestDataGenerator(keras.utils.Sequence):
-	def __init__(self, data, batch_size, dim, n_channels, n_classes, shuffle=False):
+	def __init__(self, data, batch_size, dim, shuffle=False):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.data = data
-		self.n_channels = n_channels
-		self.n_classes = n_classes
+		self.n_channels = 1
+		self.n_classes = 1
 		self.shuffle = shuffle
 		self.on_epoch_end()
 
@@ -220,11 +222,6 @@ class TestDataGenerator(keras.utils.Sequence):
 		# Denotes the number of batches per epoch
 		return int(np.ceil(len(list(self.data)) / self.batch_size))
 
-	#########################################################################
-	# Description: Generate one batch of data, evaluates and pre-process the data.
-	# Input:
-	# Output: DataGenerator obj
-	#########################################################################
 	def __getitem__(self, index):
 		indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
 		batchData = [self.data[k] for k in indexes]
@@ -257,8 +254,3 @@ def oneHotZeroPad(string, maxSize=PBM_LEN):
 		raise ValueError('Cannot zero pad the string')
 	padMatrix = np.zeros([pad, 4])
 	return np.concatenate((padMatrix, matrix, padMatrix), axis=0)
-
-########################
-# DEBUG
-# Simple model to illustrate the dataPipe behavior
-########################

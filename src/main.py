@@ -15,6 +15,7 @@ DEBUG = True
 
 def _main():
 
+
 	if (len(sys.argv)) < 3:
 		print("Missing arguments, call should be : python main.py <pbm> <selex0> <selex1> <selex2> ... <selex5>")
 		exit(1)
@@ -29,7 +30,7 @@ def _main():
 
 	# Some simple model for test
 	# conv-conv-flat-dense
-	net_model = BuildModel(validation=False, model_name='base_net')
+	net_model = Nets(model_name='debug_net',validation=False)
 	net_model.train(dataPipe.train_generator, dataPipe.validation_generator, steps_per_epoch=5)
 	predictions = net_model.test(dataPipe.test_generator)
 

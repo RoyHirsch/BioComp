@@ -1,25 +1,40 @@
 {
+
     "input_shape": [36 ,4],
     "batch_size": 20,
     "epochs":10,
-    "data_format": "NHWC",
-
-    "conv_kernel_size": [3],
+    "conv_kernel_size": 3,
     "conv_strides": 1,
     "conv_depth": 3,
     "conv_filters": 32,
     "strides": [1],
     "pool_size":[2],
+    "pool_strides": [2],
     "dropout": 0.25,
-
     "learning_rate":0.001,
     "momentum":0.9,
     "activation1": "relu",
     "activation2": "sigmoid",
     "fc_activation":"softmax",
+    "skip_connection_num": 2,
     "loss": "binary_crossentropy",
     "optimizer": "Adam",
-    "pool_strides": 2,
-    "regularization_coeff": 0.01
+    "regularization_coeff": 0.01,
+
+
+    "conv_layers_dict": {"layers": ["conv", "residual"],
+                    "reps": 4,
+                    "filters": [64, 128, 256, 512],
+                    "kernel_size": 3
+                       },
+    "fc_layers_dict": {
+                    "sizes": [64, 128, 256, 512]
+                       },
+
+    "nodes_dict": {"nodes": 4,
+                    "kernel_sizes": [ 3, 5, 7, 9]
+                       }
+
+
 
 }

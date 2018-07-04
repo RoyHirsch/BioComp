@@ -9,9 +9,8 @@ import sys
 import os
 sys.path.append(os.path.realpath(__file__ + "/../../"))
 from Utils import read_data, util_functions
+from simple_model import SimpleModel
 
-# Constants #
-DEBUG = True
 
 def _main():
 
@@ -25,10 +24,15 @@ def _main():
 	# Create data pipeline obj
 	dataPipe = read_data.DataPipeline(sys.argv)
 
+	model = SimpleModel()
+	model.train(dataPipe.train_generator, dataPipe.validation_generator, 1, 6)
+	predictions = model.predict(dataPipe.test_generator,6)
+
 	# Some simple model for test
-	net_model = BuildModel()
-	net_model.train(dataPipe.train_generator, dataPipe.validation_generator)
-	predictions = net_model.test(dataPipe.test_generator)
+	# net_model = BuildModel()
+	# predictions = net_model.test(dataPipe.test_generator)
+	# net_model.train(dataPipe.train_generator, dataPipe.validation_generator)
+	# predictions = net_model.test(dataPipe.test_generator)
 
 	# Evaluate the model
 	AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)

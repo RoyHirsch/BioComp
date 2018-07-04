@@ -1,4 +1,3 @@
-
 import numpy as np
 import keras
 import os
@@ -35,14 +34,13 @@ class ModelFunctions:
         self.epochs = parameters["epochs"]
         self.regularization_coeff = parameters["regularization_coeff"]
 
-    def add_conv_layer(self, input_, kernel_size, dropout=True, batch_norm=True):
+    def add_conv_layer(self, input_, kernel_size, dropout=True, batch_norm=False):
 
         """Add to exist model basic layer according to user specifications
         kernel size didn't added to the parameters so there will be flexibility in model build"""
 
         output_ = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
-                         activation=self.activation1,
-                         kernel_regularizer=l2(self.regularization_coeff))(input_)
+                         activation=self.activation1)(input_)
 
         # TODO consider add regularization to external params. consider use of other weigths initializer
         if batch_norm:
@@ -65,13 +63,12 @@ class ModelFunctions:
 
         return output_
 
-    def add_residual_block(self, input_, n_skip, kernel_size, dropout=True, batch_norm=True):
+    def add_residual_block(self, input_, n_skip, kernel_size, dropout=True, batch_norm=False):
         skip_node = input_
         conv_node = input_
         for i in range(n_skip):
             conv_node = Conv1D(filters=self.conv_filters, kernel_size=kernel_size, strides=self.strides,
-                               activation=self.activation1, padding='same',
-                               kernel_regularizer=l2(self.regularization_coeff))(conv_node)
+                               activation=self.activation1, padding='same')(conv_node)
             skip_node = Conv1D(filters=self.conv_filters, kernel_size=[1],
                                strides=self.strides, padding='same')(skip_node)
 
@@ -108,7 +105,7 @@ class BuildModel(ModelFunctions):
         sgd = self.optimizer()
         model.compile(loss=self.loss, optimizer=sgd)
         model.fit_generator(generator=training_generator,
-                            validation_data=validation_generator,
+                            steps_per_epoch = 1000,
                             use_multiprocessing=True,
                             workers=6,
                             verbose=1)
@@ -124,11 +121,12 @@ class BuildModel(ModelFunctions):
 
     def base_net(self):
         input_ = Input(shape=self.input_shape)
-        output_ = self.add_conv_layer(input_, kernel_size=3, dropout=True, batch_norm=True)
-        output_ = self.add_residual_block(output_, 1, 3)
+        output_ = self.add_conv_layer(input_, kernel_size=7, dropout=True, batch_norm=False)
+        # output_ = self.add_residual_block(output_, 1, 3)
+        output_ = self.add_conv_layer(input_, kernel_size=7, dropout=True, batch_norm=False)
         output_ = Flatten()(output_)
-        output_ = self.add_fc_layer(output_, 1)
-        output_ = self.add_sigmoid_layer(output_)
+        output_ = self.add_fc_layer(output_, 128)
+        output_ = Dense(1, activation='sigmoid')(output_)
         net = Model(inputs=input_, outputs=output_)
         return net
 

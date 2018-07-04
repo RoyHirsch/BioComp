@@ -17,6 +17,9 @@ def _main(numOfRuns=2):
 	# Create logger obj, print with the function : logging.info
 	runFolderDir = util_functions.startLogging(isDump=False)
 
+	# Permutate paramsDict to
+	paramsDict = getParamsDict(2)
+
 	# Run the nn over num of samples
 	resDict = {}
 	for sample in range(numOfRuns):
@@ -28,14 +31,17 @@ def _main(numOfRuns=2):
 		dataPipe = read_data.DataPipeline(filesList)
 
 		# Create and train the model
-		# TODO Call your model #
+		model = SimpleModel(paramsDict, 2)
+		model.train(dataPipe.train_generator, dataPipe.validation_generator, 1, 6)
 
 		# Evaluate the model
+		predictions = model.predict(dataPipe.test_generator, 6)
 		AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)
-		resDict[str(sampleNum)] = round(AUPR,5)
+		resDict[str(sampleNum)] = round(AUPR, 5)
 
-	print('########################################\n Results\n########################################')
+	print('########################################\n Hyper Params\n########################################\n')
 	printDict(paramsDict)
+	print('########################################\n Results\n########################################\n')
 	for k,v in resDict.items():
 		print('Sample number {} : AUPR : {}'.format(k, v))
 	print('Average AUPR : {}'.format(sum(resDict.values())/len(resDict)))

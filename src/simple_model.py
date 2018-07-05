@@ -112,7 +112,7 @@ def getParamsDict(numOfModel):
 
 
 def printDict(paramsDict):
-	print('Params are :')
+	print('The hyper-params are :')
 	for key, value in paramsDict.items():
 		print('{} : {}'.format(key, value))
 

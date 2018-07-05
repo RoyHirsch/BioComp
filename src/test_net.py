@@ -11,14 +11,19 @@ sys.path.append(os.path.realpath(__file__ + "/../../"))
 from Utils import read_data, util_functions
 from simple_model import *
 
+######################
+# CONSTANTS
+######################
+numOfRuns = 2
+modelNum = 1
 
-def _main(numOfRuns=2):
+def _main(numOfRuns=numOfRuns):
 
 	# Create logger obj, print with the function : logging.info
 	runFolderDir = util_functions.startLogging(isDump=False)
 
 	# Permutate paramsDict to
-	paramsDict = getParamsDict(2)
+	paramsDict = getParamsDict(modelNum)
 
 	# Run the nn over num of samples
 	resDict = {}
@@ -31,7 +36,7 @@ def _main(numOfRuns=2):
 		dataPipe = read_data.DataPipeline(filesList)
 
 		# Create and train the model
-		model = SimpleModel(paramsDict, 2)
+		model = SimpleModel(paramsDict, modelNum)
 		model.train(dataPipe.train_generator, dataPipe.validation_generator, 1, 6)
 
 		# Evaluate the model
@@ -39,9 +44,10 @@ def _main(numOfRuns=2):
 		AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)
 		resDict[str(sampleNum)] = round(AUPR, 5)
 
-	print('########################################\n Hyper Params\n########################################\n')
+	print('\n########################################\n Hyper Params\n########################################\n')
+	print('Model number {}'.format(modelNum))
 	printDict(paramsDict)
-	print('########################################\n Results\n########################################\n')
+	print('\n########################################\n Results\n########################################\n')
 	for k,v in resDict.items():
 		print('Sample number {} : AUPR : {}'.format(k, v))
 	print('Average AUPR : {}'.format(sum(resDict.values())/len(resDict)))

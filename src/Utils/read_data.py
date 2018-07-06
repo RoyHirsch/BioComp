@@ -89,7 +89,8 @@ class DataPipeline(object):
 
 		# Pre-process the data:
 		trainData, validationData, trainLabel, validationLabel = self.process_selex_data(selexFiles)
-		testData = self.process_PBM_data(pbmFile)
+		# testData = self.process_PBM_data(pbmFile)
+		testData = pbmFile
 
 		return trainData, validationData, trainLabel, validationLabel, testData
 

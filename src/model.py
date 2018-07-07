@@ -9,7 +9,7 @@ from keras.optimizers import SGD, Adam
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras.models import Model
-
+import keras.backend as K
 from Utils.parameters import parameters
 
 # load parameters
@@ -75,7 +75,7 @@ class ModelFunctions:
 
         return output_
 
-    def add_residual_block(self, input_, kernel_size, filters, dropout=True, batch_norm=True):
+    def add_residual_block(self, input_, kernel_size, filters, dropout=True, batch_norm=False):
         skip_node = input_
         conv_node = input_
         n_skip = self.skip_connection_num
@@ -90,14 +90,15 @@ class ModelFunctions:
                 conv_node = BatchNormalization()(conv_node)
                 skip_node = BatchNormalization()(skip_node)
 
-
             if dropout:
                 conv_node = Dropout(self.dropout)(conv_node)
 
         conv_node = MaxPooling1D(pool_size=self.pool_size, strides=None)(conv_node)
         skip_node = MaxPooling1D(pool_size=self.pool_size, strides=None)(skip_node)
 
-        output_ = add([skip_node, conv_node])
+        # output_ = add([skip_node, conv_node])
+        max_dim = len(np.shape(conv_node[0])) - 1
+        output_ = keras.layers.concatenate([skip_node, conv_node], axis=max_dim)
 
         return output_
 
@@ -114,16 +115,8 @@ class BuildModel(ModelFunctions):
         super(BuildModel, self).__init__()
         self.validation = validation
 
-
-    def create_multiple_conv_layer_model(self, input_, kernel_size=None,padding='valid'):
+    def create_multiple_conv_layer_model(self, input_, filters, layers,  reps=1, kernel_size=None, padding='valid'):
         output_ = input_
-        layers_dict = self.conv_layers_dict
-        layers = layers_dict['layers']
-        reps = layers_dict['reps']
-        filters = layers_dict['filters']
-        if kernel_size is None:
-            kernel_size = layers_dict['kernel_size']
-
         if len(filters) != reps:
             raise ValueError('Length of filters list is not equal with number of reps ')
 
@@ -135,7 +128,7 @@ class BuildModel(ModelFunctions):
                                                   batch_norm=False, padding=padding)
                 if layer == 'residual':
                     output_ = self.add_residual_block(output_, kernel_size=kernel_size, filters=filters[rep],
-                                                      dropout=True, batch_norm=False,)
+                                                      dropout=True, batch_norm=False)
         return output_
 
     def create_multiple_fc_layer_model(self, input_layer=False, input_=None, sizes=None):
@@ -151,7 +144,7 @@ class BuildModel(ModelFunctions):
             output_ = self.add_fc_layer(output_, sizes[rep], dropout=False, BatchNormalization=True)
             return output_
 
-    def create_multiple_nodes_model(self, input_=None):
+    def create_multiple_nodes_model(self, input_=None, mode='single_layer_per_node', filters=None, layer='conv'):
 
         layers_dict = self.conv_layers_dict
         nodes_dict = self.nodes_dict
@@ -164,8 +157,18 @@ class BuildModel(ModelFunctions):
 
         nodes = []
         for node in range(nodes_num):
-            nodes.append(self.create_multiple_conv_layer_model(input_=input_,
-                                                               kernel_size=kernel_sizes[node], padding='same'))
+            if mode == 'multiple_layer_per_node':
+                nodes.append(self.create_multiple_conv_layer_model(input_=input_,
+                                                                   kernel_size=kernel_sizes[node],
+                                                                   padding='same', layers=layer))
+            if mode == 'single_layer_per_node':
+                if layer == 'conv':
+                    nodes.append(self.add_conv_layer(input_=input_, kernel_size=kernel_sizes[node],
+                                                     filters=filters[node],
+                                                     batch_norm=False, padding='same'))
+                if layer == 'residual':
+                    nodes.append(self.add_residual_block(input_=input_,kernel_size=kernel_sizes[node],
+                                                         filters=filters[node],batch_norm=False))
 
         max_dim = len(np.shape(nodes[0])) - 1
         merged = keras.layers.concatenate(nodes, axis=max_dim)
@@ -181,8 +184,7 @@ class Nets(BuildModel):
             'res_net': self.res_net,
             'multiple_nodes_net': self.multiple_nodes_net,
             'debug_net': self.debug_net,
-            'debug_net2': self.debug_net2,
-
+            'multiple_nodes_res_net': self.multiple_nodes_res_net,
 
         }.get(model_name)
 
@@ -214,44 +216,74 @@ class Nets(BuildModel):
         net = Model(inputs=input_, outputs=output_)
         return net
 
-    def debug_net2(self):
-
-        input_ = Input(shape=self.input_shape)
-        output_ = Conv1D(filters=32,kernel_size=3,strides=1)(input_)
-        output_ = Dense(1)(output_)
-        net = Model(inputs=input_, outputs=output_)
-        return net
-
-
     def res_net(self):
         input_ = Input(shape=self.input_shape)
-        output_ = self.create_multiple_conv_layer_model(input_=input_)
+        output_ = self.create_multiple_conv_layer_model(input_=input_, reps=3, layers=['residual'],
+                                                        filters=[64, 64, 64], kernel_size=3
+                                                        , padding='same')
+        output_ = self.create_multiple_conv_layer_model(input_=output_, reps=4, layers=['residual'],
+                                                        filters=[128, 128, 128, 128], kernel_size=3
+                                                        , padding='same')
+        output_ = self.create_multiple_conv_layer_model(input_=output_, reps=6, layers=['residual'],
+                                                        filters=[256, 256, 256, 256, 256, 256]
+                                                        , kernel_size=3
+                                                        , padding='same')
+        output_ = self.create_multiple_conv_layer_model(input_=output_, reps=3, layers=['residual'],
+                                                        filters=[512, 512, 512], kernel_size=3
+                                                        , padding='same')
         output_ = Flatten()(output_)
-        output_ = self.add_fc_layer(input_=output_, size=32)
+        output_ = self.add_fc_layer(input_=output_, size=32,)
         output_ = self.add_fc_layer(input_=output_, size=1, no_activation=True)
         output_ = self.add_sigmoid_layer(output_)
         net = Model(inputs=input_, outputs=output_)
 
         return net
 
-
     def multiple_nodes_net(self):
         input_ = Input(shape=self.input_shape)
-        output_ = self.create_multiple_nodes_model(input_=input_)
-        output_ = self.add_fc_layer(output_, 2, dropout=True, no_activation=True)
-        output_ = Activation(activation='softmax')(output_)
+        output_ = self.create_multiple_nodes_model(input_=input_, filters=[40, 40, 48])
+        output_ = Flatten()(output_)
+        output_ = self.add_fc_layer(output_, 1, dropout=True, no_activation=True)
+        output_ = Activation(activation='sigmoid')(output_)
         net = Model(inputs=input_, outputs=output_)
         return net
+
+    def multiple_nodes_res_net(self):
+        input_ = Input(shape=self.input_shape)
+        output_ = self.create_multiple_nodes_model(input_=input_, filters=[40, 40, 48], layer='residual')
+        output_ = Flatten()(output_)
+        output_ = self.add_fc_layer(output_, 1, dropout=True, no_activation=True)
+        output_ = Activation(activation='sigmoid')(output_)
+        net = Model(inputs=input_, outputs=output_)
+        return net
+
+    def attention_mechanism(self):
+
+        input_ = Input(shape=self.input_shape)
+
+        # ATTENTION PART STARTS HERE
+        attention_probs = Dense(units=self.input_shape, activation='softmax', name='attention_vec')(input_)
+        attention_mul = merge([input_, attention_probs], output_shape=32, name='attention_mul', mode='mul')
+        # ATTENTION PART FINISHES HERE
+
+        attention_mul = Dense(64)(attention_mul)
+        output_ = Dense(1, activation='sigmoid')(attention_mul)
+        model = Model(input=input_, output=output_)
+        return model
+
+    ##########################
+    # Train and test methods #
+    ##########################
 
     def train(self, training_generator, validation_generator, steps_per_epoch=None):
         self.model.compile(loss=self.loss, optimizer=self.optimizer(), metrics=['accuracy'])
         if not self.validation:
             validation_generator = None
         self.model.fit_generator(generator=training_generator,
-                            validation_data=validation_generator,
-                            use_multiprocessing=True,
-                            workers=6,
-                            verbose=1, steps_per_epoch=steps_per_epoch)
+                                 validation_data=validation_generator,
+                                 use_multiprocessing=True,
+                                 workers=6,
+                                 verbose=1, steps_per_epoch=steps_per_epoch, epochs=self.epochs)
 
     def test(self, test_generator):
         model = self.model
@@ -264,10 +296,35 @@ class Nets(BuildModel):
                         decay=self.learning_rate_decay_rate, amsgrad=False)
         if self.optimizer_type == 'SGD':
             return SGD(lr=self.learning_rate, decay=self.learning_rate_decay_rate,
-                       momentum=self.momentum, nesterov=True)
+                       momentum=self.momentum, nesterov=True,)
+        if self.optimizer_type == 'Adadelta':
+            return keras.optimizers.Adadelta(lr=self.learning_rate, rho=0.95, epsilon=None,
+                                             decay=self.learning_rate_decay_rate)
 
+    #########
+    # Utils #
+    #########
 
-    def get_layerr(self, layer_num):
+    def get_activations(self, inputs, print_shape_only=False, layer_name=None):
+        model = self.model
+        print('----- activations -----')
+        activations = []
+        inp = model.input
+        if layer_name is None:
+            outputs = [layer.output for layer in model.layers]
+        else:
+            outputs = [layer.output for layer in model.layers if layer.name == layer_name]  # all layer outputs
+        funcs = [K.function([inp] + [K.learning_phase()], [out]) for out in outputs]  # evaluation functions
+        layer_outputs = [func([inputs, 1.])[0] for func in funcs]
+        for layer_activations in layer_outputs:
+            activations.append(layer_activations)
+            if print_shape_only:
+                print(layer_activations.shape)
+            else:
+                print(layer_activations)
+        return activations
+
+    def get_layer_(self, layer_num):
         layer = self.model.get_layer(index=layer_num)
         return layer
 

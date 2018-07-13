@@ -29,13 +29,13 @@ def _main(numOfRuns=2):
 
 		# Create and train the model
 		# TODO Call your model #
+		predictions = None
 
 		# Evaluate the model
-		AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)
-		resDict[str(sampleNum)] = round(AUPR,5)
+		AUPR = util_functions.getAUPR(dataPipe.testData, predictions)
+		resDict[str(sampleNum)] = round(AUPR, 5)
 
 	print('########################################\n Results\n########################################')
-	printDict(paramsDict)
 	for k,v in resDict.items():
 		print('Sample number {} : AUPR : {}'.format(k, v))
 	print('Average AUPR : {}'.format(sum(resDict.values())/len(resDict)))

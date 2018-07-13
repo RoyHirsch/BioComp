@@ -4,10 +4,7 @@ import logging
 import time
 import sys
 import numpy as np
-from sklearn.metrics import precision_recall_curve
-from sklearn import metrics
 from sklearn.metrics import average_precision_score
-from sklearn.metrics import roc_auc_score
 
 
 def sortPBM(originalPBMdata, predictionsPerString):
@@ -33,30 +30,14 @@ How to use precision_recall_curve:
 >>> y_scores = np.array([0.1, 0.4, 0.35, 0.8])
 >>> precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
 '''
-def getAUPR(groundTrue, prediction, isPrint):
+def getAUPR(groundTrue, predict):
 
 	# Generate the ground true label
-	label = np.zeros([len(groundTrue)])
-	label[:100] = 1
-	precision, recall, _ = precision_recall_curve(label, prediction)
+	true = [int(x) for x in np.append(np.ones(100), np.zeros(len(groundTrue) - 100), axis=0)]
 
 	# The area under the precision-recall curve is AUPR
-	aupr = metrics.auc(recall, precision)
+	aupr = average_precision_score(true, predict)
 	print('AUPR = {}'.format(np.round(aupr ,4)))
-
-	if isPrint:
-		import matplotlib.pyplot as plt
-		plt.figure()
-		plt.step(recall, precision, color='b', alpha=0.2,where='post')
-		plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
-
-		plt.xlabel('Recall')
-		plt.ylabel('Precision')
-		plt.ylim([0.0, 1.05])
-		plt.xlim([0.0, 1.0])
-		plt.title('Precision-Recall curve')
-		plt.show()
-
 	return aupr
 
 #####################################################################################

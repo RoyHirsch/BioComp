@@ -14,8 +14,8 @@ from simple_model import *
 ######################
 # CONSTANTS
 ######################
-numOfRuns = 2
-modelNum = 1
+numOfRuns = 5
+modelNum = 2
 
 def _main(numOfRuns=numOfRuns):
 
@@ -32,16 +32,20 @@ def _main(numOfRuns=numOfRuns):
 		# Get random sample data and export the files as list
 		sampleNum, filesList = util_functions.getTrainSample(dataRoot=os.path.realpath(__file__ + '/../../')+'/train')
 
+		# Debug print
+		print('Sample number is {}'.format(sampleNum))
+
 		# Create data pipeline obj
 		dataPipe = read_data.DataPipeline(filesList)
 
 		# Create and train the model
 		model = SimpleModel(paramsDict, modelNum)
-		model.train(dataPipe.train_generator, dataPipe.validation_generator, 1, 6)
+		model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
+		            steps_per_epoch=10000, n_epochs=3, n_workers=6)
 
 		# Evaluate the model
 		predictions = model.predict(dataPipe.test_generator, 6)
-		AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)
+		AUPR = util_functions.getAUPR(dataPipe.testData, predictions)
 		resDict[str(sampleNum)] = round(AUPR, 5)
 
 	print('\n########################################\n Hyper Params\n########################################\n')

@@ -252,5 +252,8 @@ def oneHotZeroPad(string, maxSize=PBM_LEN):
 	pad = (maxSize - length) // 2
 	if ((maxSize - length) // 2 != (maxSize - length) / 2):
 		raise ValueError('Cannot zero pad the string')
-	padMatrix = np.zeros([pad, 4])
+
+	padMatrix = np.full((pad, 4), 0.25)
+	# padMatrix = np.zeros([pad, 4])
+
 	return np.concatenate((padMatrix, matrix, padMatrix), axis=0)

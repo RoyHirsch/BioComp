@@ -1,13 +1,9 @@
-import numpy as np
 import os
 import logging
 import time
 import sys
 import numpy as np
-from sklearn.metrics import precision_recall_curve
-from sklearn import metrics
 from sklearn.metrics import average_precision_score
-from sklearn.metrics import roc_auc_score
 
 
 def sortPBM(originalPBMdata, predictionsPerString):
@@ -26,38 +22,22 @@ def dumpPDMtoFile(folder, fileName, sortedPDMStrings):
 	np.savetxt(fullFilePath, sortedPDMStrings, delimiter=" ", fmt="%s")
 	return
 
-
 '''
 How to use precision_recall_curve:
 >>> y_true = np.array([0, 0, 1, 1])
 >>> y_scores = np.array([0.1, 0.4, 0.35, 0.8])
 >>> precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
 '''
-def getAUPR(groundTrue, prediction, isPrint):
+def getAUPR(groundTrue, predict):
 
 	# Generate the ground true label
-	label = np.zeros([len(groundTrue)])
-	label[:100] = 1
-	precision, recall, _ = precision_recall_curve(label, prediction)
+	true = [int(x) for x in np.append(np.ones(100), np.zeros(len(groundTrue) - 100), axis=0)]
 
 	# The area under the precision-recall curve is AUPR
-	aupr = metrics.auc(recall, precision)
-	print('AUPR = {}'.format(np.round(aupr ,4)))
-
-	if isPrint:
-		import matplotlib.pyplot as plt
-		plt.figure()
-		plt.step(recall, precision, color='b', alpha=0.2,where='post')
-		plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
-
-		plt.xlabel('Recall')
-		plt.ylabel('Precision')
-		plt.ylim([0.0, 1.05])
-		plt.xlim([0.0, 1.0])
-		plt.title('Precision-Recall curve')
-		plt.show()
-
+	aupr = average_precision_score(true, predict)
+	print('AUPR = {}'.format(np.round(aupr, 4)))
 	return aupr
+
 
 #####################################################################################
 # Operation functions
@@ -74,31 +54,64 @@ def createFolder(homeDir, folderName):
 	# 	              if False, the log will only be displayed at the stdout.
 	# Output: runFolderDir - the new folder dir if isDump is True, else None
 	#########################################################################
-def startLogging(isDump=False):
+def startLogging(isDump):
 
 	# Init a logger set logging level
+	log = logging.getLogger(__name__)
 	logFormat = '%(asctime)s - %(levelname)s - %(module)s : %(message)s'
 	logging.basicConfig(format=logFormat, stream=sys.stdout, level=logging.INFO)
 	logLevel = logging.INFO
 
-	logStr = time.strftime('logFile_%H_%M__%d_%m_%y') + '.log'
+	logStr = time.strftime('logFile_%H_%M_%S__%d_%m_%y') + '.log'
 
 	if isDump:
 		createFolder(os.path.realpath(__file__ + "/../../../"), 'runData')
-		runFolderStr = time.strftime('RunFolder_%H_%M__%d_%m_%y')
+		runFolderStr = time.strftime('RunFolder_%H_%M_%S__%d_%m_%y')
 		createFolder(os.path.realpath(__file__ + "/../../../") + "/runData/", runFolderStr)
 		runFolderDir = os.path.realpath(__file__ + "/../../../") + "/runData/" + runFolderStr
 
 		fileHandler = logging.FileHandler(runFolderDir+'/'+logStr)
 		fileHandler.setFormatter(logging.Formatter(logFormat))
 		fileHandler.setLevel(logLevel)
+
 		logging.getLogger('').addHandler(fileHandler)
+
+		# Added an option to log stdout in realtime
+		sl = StreamToLogger(logging.getLogger(''), logging.INFO)
+		sys.stdout = sl
+
+		# Added an option to log stderr in realtime
+		sl = StreamToLogger(logging.getLogger(''), logging.ERROR)
+		sys.stderr = sl
 
 		logging.info("Logger was created, isDump is True. Log is in {}.".format(runFolderDir))
 		return runFolderDir
 
 	logging.info("Logger was created, isDump is False.")
 	return None
+
+class StreamToLogger(object):
+	# taken from:
+	# https://www.electricmonk.nl/log/2011/08/14/redirect-stdout-and-stderr-to-a-logger-in-python/
+
+	def __init__(self, logger, log_level=logging.INFO):
+		self.logger = logger
+		self.log_level = log_level
+		self.linebuf = ''
+
+	def write(self, buf):
+		for line in buf.rstrip().splitlines():
+			self.logger.log(self.log_level, line.rstrip())
+
+	def flush(self):
+		pass
+
+# logging.basicConfig(
+#    level=logging.DEBUG,
+#    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s',
+#    filename="out.log",
+#    filemode='a'
+
 
 def getTrainSample(dataRoot):
 	sampleNum = int(np.random.randint(1,123,1))

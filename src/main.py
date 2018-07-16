@@ -19,7 +19,7 @@ def _main():
 		exit(1)
 
 	# Create logger obj, print with the function : logging.info
-	runFolderDir = util_functions.startLogging(isDump=False)
+	runFolderDir = util_functions.startLogging(isDump=True)
 
 	# Create data pipeline obj
 	dataPipe = read_data.DataPipeline(sys.argv)
@@ -35,7 +35,7 @@ def _main():
 	# predictions = net_model.test(dataPipe.test_generator)
 
 	# Evaluate the model
-	AUPR = util_functions.getAUPR(dataPipe.testData, predictions, False)
+	AUPR = util_functions.getAUPR(dataPipe.testData, predictions)
 
 if __name__ == '__main__':
 	_main()

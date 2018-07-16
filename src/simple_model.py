@@ -68,10 +68,9 @@ class SimpleModel():
 
 			self.model = model
 
-	def train(self, tain_generator, validation_generator, n_epochs, n_workers):
-		self.model.fit_generator(generator=tain_generator, validation_data=validation_generator, steps_per_epoch=2000, epochs=n_epochs,
-		                         validation_steps=7000, use_multiprocessing=n_workers!=0, workers=n_workers,verbose=1)
-
+	def train(self, tain_generator, validation_generator, steps_per_epoch, n_epochs, n_workers):
+		self.model.fit_generator(generator=tain_generator, validation_data=validation_generator, steps_per_epoch=steps_per_epoch, epochs=n_epochs,
+		                         validation_steps=7000, use_multiprocessing=n_workers!=0, workers=n_workers,verbose=2)
 
 	def predict(self, test_generator, n_workers):
 		predictions = self.model.predict_generator(generator=test_generator, use_multiprocessing=n_workers!=0,
@@ -97,9 +96,9 @@ def getParamsDict(numOfModel):
 
 	elif numOfModel == 2:
 		mainDict = {
-			'depth': [[20,20,24],[40,40,48],[80,80,96]],
+			'depth': [[40,40,48],[80,80,96]],
 			'dropout': [0, 0.25, 0.5],
-			'hidden_size': [32, 64, 128],
+			'hidden_size': [32, 64],
 			'lr_decay': [0, 1e-6, 1e-7]
 		}
 

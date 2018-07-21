@@ -4,7 +4,7 @@ import time
 import sys
 import numpy as np
 from sklearn.metrics import average_precision_score
-
+from keras import backend as K
 
 def sortPBM(originalPBMdata, predictionsPerString):
 
@@ -130,3 +130,24 @@ def getTrainSample(dataRoot):
 			break
 	return sampleNum, filesList
 
+def getTrainSampleFromList(dataRoot, ind):
+	listOfSamples = [57, 59, 86, 80, 41, 54, 9, 108, 73, 30, 62, 96, 5, 50, 74, 24, 99, 101, 68, 31]
+	sampleNum = listOfSamples[ind]
+
+	fileList = os.listdir(dataRoot)
+	filesList = ['']
+
+	pbmFilename = 'TF{}_pbm.txt'.format(sampleNum)
+	filesList.append(pbmFilename)
+
+	for i in range(10):
+		selexFilename = 'TF{}_selex_{}.txt'.format(sampleNum, i)
+		if selexFilename in fileList:
+			filesList.append(selexFilename)
+		else:
+			break
+	return sampleNum, filesList
+
+def getYaronAuprPerSample(ind):
+	yaronAUPR = [0.594610698,0.514773825,0.4717869,0.341958113,0.250109638,0.246641534,0.239458146,0.237103258,0.221448961,0.173986496,0.172595686,0.167862911,0.114530832,0.113215591,0.103344651,0.002081527,0.002065405,0.002049701,0.087953909,0.037662088]
+	return yaronAUPR[listOfSamples.index(ind)]

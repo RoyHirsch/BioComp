@@ -14,16 +14,11 @@ def _main():
 	# Create data pipeline obj
 	dataPipe = read_data.DataPipeline(sys.argv)
 
-	mainDict = {
-		'depth': [80, 80, 96],
-		'dropout': 0,
-		'hidden_size': 32,
-		'lr_decay': 0
-	}
+	paramsDict = getParamsDict(2)
 
-	model = SimpleModel(paramsDict=mainDict, numOfModel=2)
+	model = SimpleModel(paramsDict=paramsDict, numOfModel=2)
 	model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
-	            steps_per_epoch=10000, n_epochs=3, n_workers=6)
+	            steps_per_epoch=None, n_epochs=3, n_workers=6)
 
 	predictions = model.predict(dataPipe.test_generator, 6)
 	AUPR = util_functions.getAUPR(dataPipe.testData, predictions)

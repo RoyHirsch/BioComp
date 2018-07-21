@@ -3,7 +3,8 @@ import tensorflow as tf
 
 import os
 import random
-from keras.layers import Dense, Dropout, Flatten, Activation, multiply, Permute, Lambda
+from Utils.util_functions import f1
+from keras.layers import Dense, Dropout, Flatten, Activation, multiply, Permute, Lambda, Add, Reshape
 from keras.layers import Conv1D, MaxPooling1D
 from keras.layers import merge, Input, add
 from keras.optimizers import SGD
@@ -11,6 +12,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras.models import Model, Sequential
 import keras.backend as K
+
 class SimpleModel():
 
 	def __init__(self, paramsDict, numOfModel):
@@ -20,20 +22,23 @@ class SimpleModel():
 		if numOfModel == 1:
 			inputs = Input(shape=(36, 4))
 			conv = Conv1D(256, 11, activation='relu')(inputs)
-			max = (MaxPooling1D(2))(conv)
+			max = (MaxPooling1D(6))(conv)
 			drop = Dropout(0.25)(max)
-			conv2 = Conv1D(256, 11, activation='relu')(drop)
-			max2 = (MaxPooling1D(2))(conv2)
-			drop2 = Dropout(0.25)(max2)
+			# conv2 = Conv1D(256, 11, activation='relu')(drop)
+			# max2 = (MaxPooling1D(2))(conv2)
+			# drop2 = Dropout(0.25)(max2)
 
-			flat = K.squeeze(drop2, 1)
+			# squeez = Lambda(squeezLayer)(drop)
+			# attention_probs = Dense(256, activation='softmax', name='attention_probs')(squeez)
+			# sent_representation = multiply([squeez, attention_probs])
+			# output = Dense(1, activation='sigmoid')(sent_representation)
 
-			attention_probs = Dense(256, activation='softmax', name='attention_probs')(flat)
-			sent_representation = multiply([flat, attention_probs])
+			r_drop = Reshape((256, 4))(drop)
+			attention_probs = Dense(1, activation='softmax', name='attention_probs')(r_drop)
+			sent_representation = multiply([r_drop, attention_probs])
 
-			# dense = Dense(64, activation='relu')(contex_vector)
-			output = Dense(1, activation='sigmoid')(sent_representation)
-
+			sumLayer = Lambda(lambda x: K.sum(x, axis=1))(sent_representation)
+			output = Dense(1, activation='sigmoid')(sumLayer)
 			model = Model(inputs=inputs, outputs=output)
 			model.compile(loss=keras.losses.binary_crossentropy,
 			              optimizer=keras.optimizers.Adam(decay=paramsDict['lr_decay']),
@@ -41,21 +46,38 @@ class SimpleModel():
 
 			self.model = model
 
+		elif numOfModel == 3:
+			inputs = Input(shape=(36, 4))
+			conv = Conv1D(256, 22, activation='relu')(inputs)
+			max = (MaxPooling1D(8))(conv)
+			drop = Dropout(0.25)(max)
+			squeez = Lambda(squeezLayer)(drop)
+
+			output = Dense(1, activation='sigmoid')(squeez)
+
+			model = Model(inputs=inputs, outputs=output)
+			model.compile(loss=keras.losses.binary_crossentropy,
+			              optimizer=keras.optimizers.Adam(decay=0),
+			              metrics=['accuracy'])
+
+			self.model = model
+
+
 		elif numOfModel == 2:
 			input_shape = Input(shape=(36, 4))
 
 			trail1 = Conv1D(paramsDict['depth'][0], 8, activation='relu', padding='same')(input_shape)
-			trail1 = MaxPooling1D(2)(trail1)
+			trail1 = MaxPooling1D(paramsDict['max_pool'])(trail1)
 			if paramsDict['dropout']:
 				trail1 = Dropout(paramsDict['dropout'])(trail1)
 
 			trail2 = Conv1D(paramsDict['depth'][1], 12, activation='relu', padding='same')(input_shape)
-			trail2 = MaxPooling1D(2)(trail2)
+			trail2 = MaxPooling1D(paramsDict['max_pool'])(trail2)
 			if paramsDict['dropout']:
 				trail2 = Dropout(paramsDict['dropout'])(trail2)
 
 			trail3 = Conv1D(paramsDict['depth'][2], 24, activation='relu', padding='same')(input_shape)
-			trail3 = MaxPooling1D(2)(trail3)
+			trail3 = MaxPooling1D(paramsDict['max_pool'])(trail3)
 			if paramsDict['dropout']:
 				trail3 = Dropout(paramsDict['dropout'])(trail3)
 
@@ -65,12 +87,18 @@ class SimpleModel():
 			fc = Dense(paramsDict['hidden_size'], activation='relu')(merged)
 			if paramsDict['dropout']:
 				fc = Dropout(paramsDict['dropout'])(fc)
+
 			out = Dense(1, activation='sigmoid')(fc)
 
 			model = Model(input_shape, out)
 
+			if paramsDict['optimizer'] == 'adam':
+				optimizer = keras.optimizers.Adam(decay=paramsDict['lr_decay'])
+			elif paramsDict['optimizer'] == 'ada_delta':
+				optimizer = keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0)
+
 			model.compile(loss=keras.losses.binary_crossentropy,
-			              optimizer=keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0),
+			              optimizer=optimizer,
 			              metrics=['accuracy'])
 
 			self.model = model
@@ -111,8 +139,10 @@ def getParamsDict(numOfModel):
 		mainDict = {
 			'depth': [[40,40,48],[80,80,96]],
 			'dropout': [0, 0.25, 0.5],
-			'hidden_size': [32, 64],
-			'lr_decay': [0, 1e-6, 1e-7]
+			'hidden_size': [32, 64, 128],
+			'lr_decay': [0, 1e-6, 1e-7],
+			'max_pool': [2, 4, 6],
+			'optimizer': ['adam', 'ada_delta']
 		}
 
 		paramsDict = {}
@@ -120,6 +150,8 @@ def getParamsDict(numOfModel):
 		paramsDict['dropout'] = random.choice(mainDict['dropout'])
 		paramsDict['hidden_size'] = random.choice(mainDict['hidden_size'])
 		paramsDict['lr_decay'] = random.choice(mainDict['lr_decay'])
+		paramsDict['max_pool'] = random.choice(mainDict['max_pool'])
+		paramsDict['optimizer'] = random.choice(mainDict['optimizer'])
 		return paramsDict
 
 
@@ -127,4 +159,3 @@ def printDict(paramsDict):
 	print('The hyper-params are :')
 	for key, value in paramsDict.items():
 		print('{} : {}'.format(key, value))
-

@@ -1,14 +1,16 @@
 import keras
+import tensorflow as tf
+
 import os
 import random
-from keras.layers import Dense, Dropout, Flatten, Activation
+from keras.layers import Dense, Dropout, Flatten, Activation, multiply, Permute, Lambda
 from keras.layers import Conv1D, MaxPooling1D
 from keras.layers import merge, Input, add
 from keras.optimizers import SGD
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras.models import Model, Sequential
-
+import keras.backend as K
 class SimpleModel():
 
 	def __init__(self, paramsDict, numOfModel):
@@ -16,18 +18,23 @@ class SimpleModel():
 
 	def _getModel(self, paramsDict, numOfModel):
 		if numOfModel == 1:
-			model = Sequential()
-			model.add(Conv1D(paramsDict['depth'], paramsDict['kernel_size'], activation='relu', input_shape=[36, 4]))
-			model.add(MaxPooling1D(2))
-			model.add(Dropout(0.25))
-			# model.add(Conv1D(128, 13, activation='relu'))
-			# model.add(MaxPooling1D(2))
-			# model.add(Dropout(0.25))
-			model.add(Flatten())
-			model.add(Dense(paramsDict['hidden_size'], activation='relu'))
-			model.add(Dropout(0.5))
-			model.add(Dense(1, activation='sigmoid'))
+			inputs = Input(shape=(36, 4))
+			conv = Conv1D(256, 11, activation='relu')(inputs)
+			max = (MaxPooling1D(2))(conv)
+			drop = Dropout(0.25)(max)
+			conv2 = Conv1D(256, 11, activation='relu')(drop)
+			max2 = (MaxPooling1D(2))(conv2)
+			drop2 = Dropout(0.25)(max2)
 
+			flat = K.squeeze(drop2, 1)
+
+			attention_probs = Dense(256, activation='softmax', name='attention_probs')(flat)
+			sent_representation = multiply([flat, attention_probs])
+
+			# dense = Dense(64, activation='relu')(contex_vector)
+			output = Dense(1, activation='sigmoid')(sent_representation)
+
+			model = Model(inputs=inputs, outputs=output)
 			model.compile(loss=keras.losses.binary_crossentropy,
 			              optimizer=keras.optimizers.Adam(decay=paramsDict['lr_decay']),
 			              metrics=['accuracy'])
@@ -63,19 +70,25 @@ class SimpleModel():
 			model = Model(input_shape, out)
 
 			model.compile(loss=keras.losses.binary_crossentropy,
-			              optimizer=keras.optimizers.Adam(decay=paramsDict['lr_decay']),
+			              optimizer=keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0),
 			              metrics=['accuracy'])
 
 			self.model = model
 
 	def train(self, tain_generator, validation_generator, steps_per_epoch, n_epochs, n_workers):
 		self.model.fit_generator(generator=tain_generator, validation_data=validation_generator, steps_per_epoch=steps_per_epoch, epochs=n_epochs,
-		                         validation_steps=7000, use_multiprocessing=n_workers!=0, workers=n_workers,verbose=2)
+		                         use_multiprocessing=n_workers!=0, workers=n_workers,verbose=2)
 
 	def predict(self, test_generator, n_workers):
 		predictions = self.model.predict_generator(generator=test_generator, use_multiprocessing=n_workers!=0,
 		                                           workers=n_workers, verbose=0)
 		return predictions
+
+# def attention_layer(input_dims):
+# 	inputs = Input(shape=(input_dims,))
+# 	attention_probs = Dense(input_dims, activation='softmax', name='attention_probs')(inputs)
+# 	contex_vector = merge([inputs, attention_probs], name='attention_mul', mode='mul')
+
 
 def getParamsDict(numOfModel):
 

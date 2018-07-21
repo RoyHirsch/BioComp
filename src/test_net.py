@@ -14,8 +14,8 @@ from simple_model import *
 ######################
 # CONSTANTS
 ######################
-numOfRuns = 5
-modelNum = 2
+numOfRuns = 2
+modelNum = 1
 
 def _main(numOfRuns=numOfRuns):
 
@@ -24,6 +24,8 @@ def _main(numOfRuns=numOfRuns):
 
 	# Permutate paramsDict to
 	paramsDict = getParamsDict(modelNum)
+	# TODO !!!!!!!!!!!!
+	aramsDict = {'depth': [80,80,96], 'dropout': 0.25, 'hidden_size': 32, 'lr_decay': 0}
 
 	# Run the nn over num of samples
 	resDict = {}
@@ -40,8 +42,8 @@ def _main(numOfRuns=numOfRuns):
 
 		# Create and train the model
 		model = SimpleModel(paramsDict, modelNum)
-		model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
-		            steps_per_epoch=10000, n_epochs=3, n_workers=6)
+		model.train(tain_generator=dataPipe.train_generator, validation_generator=dataPipe.validation_generator,
+		            steps_per_epoch=5000, n_epochs=3, n_workers=6)
 
 		# Evaluate the model
 		predictions = model.predict(dataPipe.test_generator, 6)

@@ -101,7 +101,7 @@ class DataPipeline(object):
 	# Input: selexsFilesList
 	# Output: trainData, validationData, trainLabel, validationLabel
 	#########################################################################
-	def process_selex_data(self, selexsFilesList):
+	def process_selex_data(self, selexsFilesList, selex_number):
 
 		# Create united data array and label array
 		# Naive assumption - cycle 0 is negative class.

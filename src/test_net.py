@@ -9,10 +9,11 @@ import sys
 import os
 sys.path.append(os.path.realpath(__file__ + "/../../"))
 from Utils import read_data, util_functions
-from simple_model import *
+#from simple_model import *
+from keras.utils import plot_model
 
 
-def _main(numOfRuns=2):
+def _main(numOfRuns=3):
 
 	# Create logger obj, print with the function : logging.info
 	runFolderDir = util_functions.startLogging(isDump=False)
@@ -26,10 +27,18 @@ def _main(numOfRuns=2):
 
 		# Create data pipeline obj
 		dataPipe = read_data.DataPipeline(filesList)
+		selex_num = dataPipe.selex_num
 
 		# Create and train the model
-		# TODO Call your model #
-		predictions = None
+
+		net_model = Nets(selex_num=selex_num, model_name='multiple_nodes_net', validation=False)
+
+		keras.utils.print_summary(net_model.model, line_length=None, positions=None, print_fn=None)
+
+		#plot_model(net_model.model, to_file='model.png')
+		net_model.train(dataPipe.train_generator, dataPipe.validation_generator, steps_per_epoch=100)
+		predictions = net_model.test(dataPipe.test_generator)
+		#predictions = None
 
 		# Evaluate the model
 		AUPR = util_functions.getAUPR(dataPipe.testData, predictions)

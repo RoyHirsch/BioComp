@@ -178,6 +178,14 @@ class BuildModel(ModelFunctions):
 
 class Nets(BuildModel):
 
+
+
+    def __init__(self, selex_num, model_name, validation=True):
+        super(Nets, self).__init__(validation=validation)
+        self.selex_num = selex_num
+        self.model = self.model_dict(model_name)()
+
+
     def model_dict(self, model_name):
         return {
             'base_net': self.base_net,
@@ -187,10 +195,6 @@ class Nets(BuildModel):
             'multiple_nodes_res_net': self.multiple_nodes_res_net,
 
         }.get(model_name)
-
-    def __init__(self, model_name='base_net', validation=True):
-        super(Nets, self).__init__(validation=validation)
-        self.model = self.model_dict(model_name)()
 
     def base_net(self):
         input_ = Input(shape=self.input_shape)
@@ -243,8 +247,8 @@ class Nets(BuildModel):
         input_ = Input(shape=self.input_shape)
         output_ = self.create_multiple_nodes_model(input_=input_, filters=[40, 40, 48])
         output_ = Flatten()(output_)
-        output_ = self.add_fc_layer(output_, 1, dropout=True, no_activation=True)
-        output_ = Activation(activation='sigmoid')(output_)
+        output_ = self.add_fc_layer(output_, size=self.selex_num, dropout=True, no_activation=True)
+        output_ = Activation(activation='softmax')(output_)
         net = Model(inputs=input_, outputs=output_)
         return net
 
@@ -286,9 +290,23 @@ class Nets(BuildModel):
                                  verbose=1, steps_per_epoch=steps_per_epoch, epochs=self.epochs)
 
     def test(self, test_generator):
+
+        WEIGHT_CONSTANT = 0.5
+
         model = self.model
         predictions = model.predict_generator(generator=test_generator, use_multiprocessing=True, workers=6, verbose=1)
-        return predictions
+        selex_num = np.shape(predictions)[1]
+        if selex_num != 1:
+            indexes = np.linspace(1, selex_num, selex_num)
+            #weight_vector = np.transpose(np.power(2, indexes))
+            weight_vector = np.array(np.ones(selex_num))
+            weight_vector[0] = 2
+            weight_vector[-1] = 2
+            weighted_predictions = np.dot(predictions, weight_vector)/np.sum(weight_vector)
+            return weighted_predictions
+        else:
+            return predictions
+
 
     def optimizer(self):
         if self.optimizer_type == 'Adam':

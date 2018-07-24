@@ -3,7 +3,7 @@ import tensorflow as tf
 
 import os
 import random
-from Utils.util_functions import f1
+#from Utils.util_functions import f1
 from keras.layers import Dense, Dropout, Flatten, Activation, multiply, Permute, Lambda, Add, Reshape
 from keras.layers import Conv1D, MaxPooling1D
 from keras.layers import merge, Input, add

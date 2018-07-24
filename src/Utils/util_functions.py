@@ -130,8 +130,8 @@ def getTrainSample(dataRoot):
 			break
 	return sampleNum, filesList
 
-def getTrainSampleFromList(dataRoot, ind):
-	listOfSamples = [57, 59, 86, 80, 41, 54, 9, 108, 73, 30, 62, 96, 5, 50, 74, 24, 99, 101, 68, 31]
+def getTrainSampleFromList(dataRoot, listOfSamples, ind):
+	#listOfSamples = [57, 59, 86, 80, 41, 54, 9, 108, 73, 30, 62, 96, 5, 50, 74, 24, 99, 101, 68, 31]
 	sampleNum = listOfSamples[ind]
 
 	fileList = os.listdir(dataRoot)
@@ -149,5 +149,8 @@ def getTrainSampleFromList(dataRoot, ind):
 	return sampleNum, filesList
 
 def getYaronAuprPerSample(ind):
-	yaronAUPR = [0.594610698,0.514773825,0.4717869,0.341958113,0.250109638,0.246641534,0.239458146,0.237103258,0.221448961,0.173986496,0.172595686,0.167862911,0.114530832,0.113215591,0.103344651,0.002081527,0.002065405,0.002049701,0.087953909,0.037662088]
+	listOfSamples = [57, 59, 86, 80, 41, 54, 9, 108, 73, 30, 62, 96, 5, 50, 74, 24, 99, 101, 68, 31]
+	sampleNum = listOfSamples[ind]
+	yaronAUPR = [0.594610698, 0.514773825, 0.4717869, 0.341958113, 0.250109638, 0.246641534, 0.239458146, 0.237103258,
+				 0.221448961, 0.173986496, 0.172595686,0.172595686,0.167862911,0.114530832,0.113215591,0.103344651,0.002081527,0.002065405,0.002049701,0.087953909,0.037662088]
 	return yaronAUPR[listOfSamples.index(ind)]

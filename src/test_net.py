@@ -14,7 +14,7 @@ from simple_model import *
 ######################
 # CONSTANTS
 ######################
-numOfRuns = 4
+numOfRuns = 1
 modelNum = 2
 
 def _main(numOfRuns=20):
@@ -30,6 +30,10 @@ def _main(numOfRuns=20):
 
 	# Run the nn over num of samples
 	resDict = {}
+	avg_AUPR = np.zeros(numOfRuns)
+	top_AUPR = np.zeros(numOfRuns)
+	AUPR = np.zeros([numOfRuns,6])
+	predictions = []
 	for sample in range(numOfRuns):
 
 		# Get random sample data and export the files as list
@@ -37,19 +41,38 @@ def _main(numOfRuns=20):
 		                                                             listOfSamples=listOfSamples,
 		                                                             ind=ind)
 		ind += 1
+		selex_num = len(filesList) - 3
+		selex_index = np.linspace(1, selex_num, selex_num)
+		selex = 1
+		dataPipe = read_data.DataPipeline(filesList, int(selex))
+		test_length = len(dataPipe.testData)
+		tmp_predictions = np.zeros([selex_num, test_length])
+		for selex in selex_index:
+			selex = int(selex)
+			print('+++++++++ selex number %i +++++++++' % selex)
+			if selex != 1:
+				# Create data pipeline obj
+				dataPipe = read_data.DataPipeline(filesList, selex)
 
-		# Create data pipeline obj
-		dataPipe = read_data.DataPipeline(filesList)
-
-		# Create and train the model
-		model = SimpleModel(paramsDict, modelNum)
-		model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
+			# Create and train the model
+			model = SimpleModel(paramsDict, modelNum)
+			model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
 		            steps_per_epoch=None, n_epochs=3, n_workers=6)
 
-		# Evaluate the model
-		predictions = model.predict(dataPipe.test_generator, 6)
-		AUPR = util_functions.getAUPR(dataPipe.testData, predictions)
-		resDict[str(sampleNum)] = round(AUPR, 5)
+			# Evaluate the model
+			tmp_predictions[selex-1,:] = np.squeeze(model.predict(dataPipe.test_generator, 6))
+			#predictions = model.predict(dataPipe.test_generator, 6)
+			AUPR[sample,selex-1]=util_functions.getAUPR(dataPipe.testData, tmp_predictions[selex-1,:])
+
+		predictions.append(tmp_predictions)
+		avg_predictions = np.mean(predictions[sample], axis=0)
+		top_predictions = (predictions[sample][selex_num-1,:]*1.5 + predictions[sample][selex_num-2,:])/2.5
+		avg_AUPR[sample] = util_functions.getAUPR(dataPipe.testData, avg_predictions)
+		top_AUPR[sample] = util_functions.getAUPR(dataPipe.testData, top_predictions)
+
+		resDict[str(sampleNum)] = round(avg_AUPR[sample], 5)
+
+
 
 	print('\n########################################\n Hyper Params\n########################################\n')
 	print('Model number {}'.format(modelNum))

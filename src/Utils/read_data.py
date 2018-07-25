@@ -41,8 +41,9 @@ parameters = parameters(params_file_name)
 #########################################################################
 class DataPipeline(object):
 
-	def __init__(self, listOfSysArgs):
+	def __init__(self, listOfSysArgs, selex):
 		print('+++++++++ DataPipeline was created +++++++++')
+		self.selex = selex
 
 		# Load and pre-process the data
 		self.trainData, self.validationData, self.trainLabel, self.validationLabel, self.testData = \
@@ -107,7 +108,7 @@ class DataPipeline(object):
 
 		# TODO: ROY 0107 a tryout cycle 0 is False and the last cycle in True
 		# numberLabelPositive = np.sum(len(selexsFilesList[num]) for num in range(1, len(selexsFilesList)))
-		numberLabelPositive = len(selexsFilesList[-1])
+		numberLabelPositive = len(selexsFilesList[self.selex])
 		numberLabelNegative = len(selexsFilesList[0])
 
 		labelPositive = np.ones([numberLabelPositive, 1])
@@ -117,11 +118,11 @@ class DataPipeline(object):
 		minNum = min(numberLabelPositive, numberLabelNegative)
 		if numberLabelPositive == minNum:
 			label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[-1]], axis=0)
+			selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[self.selex]], axis=0)
 
 		else:
 			label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1][:minNum]], axis=0)
+			selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[self.selex][:minNum]], axis=0)
 
 		# Label of all Selex data
 		# label = np.concatenate((labelNegative, labelPositive), axis=0)

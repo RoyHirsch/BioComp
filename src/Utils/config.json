@@ -1,28 +1,16 @@
 {
     "input_shape": [36 ,4],
-    "batch_size": 16,
+    "batch_size": 32,
     "train_percentage": 0.7,
-    "epochs":10,
-    "compliment": 0,
-    "balanced_data": 1,
+    "steps_per_epoch": 1500,
+    "n_epochs": 3,
+    "n_workers": 6,
     "data_format": "NHWC",
     
-    "conv_kernel_size": [3],
-    "conv_strides": 1,
-    "conv_depth": 3,
-    "conv_filters": 32,
-    "strides": [1],
-    "pool_size":[2],
-    "dropout": 0.25,
-
-    "learning_rate":0.001,
-    "momentum":0.9,
-    "activation1": "relu",
-    "activation2": "sigmoid",
-    "fc_activation":"softmax",
-    "loss": "binary_crossentropy",
-    "optimizer": "Adam",
-    "pool_strides": 2,
-    "regularization_coeff": 0.01
-
+    "depth": [80, 80, 96],
+    "max_pool": 10,
+    "hidden_size": 128,
+    "dropout": 0.5,
+    "lr_decay": 1e-06,
+    "optimizer": "adam"
 }

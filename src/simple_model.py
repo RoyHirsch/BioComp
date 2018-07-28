@@ -1,100 +1,84 @@
 import keras
 import tensorflow as tf
-
 import os
 import random
-#from Utils.util_functions import f1
-from keras.layers import Dense, Dropout, Flatten, Activation, multiply, Permute, Lambda, Add, Reshape
-from keras.layers import Conv1D, MaxPooling1D
-from keras.layers import merge, Input, add
+from keras.layers import Dense, Dropout, Flatten, Input, Conv1D, MaxPooling1D, concatenate
 from keras.optimizers import SGD
-from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras.models import Model, Sequential
-import keras.backend as K
+from Utils.util_functions import get_model_parameters
 
-class SimpleModel():
+########################
+# LOAD PARAMS
+# Reads external json file with parameters.
+########################
+params_file_name = os.path.abspath(__file__ + '/../') + '/Utils/config.json'
+parameters = get_model_parameters(params_file_name)
 
-	def __init__(self, paramsDict, numOfModel):
-		self._getModel(paramsDict, numOfModel)
+#########################################################################
+# Description: Creates the neural network model to be trained and evaluated.
+#
+# Input: numOfModel
+# Output: Model obj
+#########################################################################
+class NetModel():
 
-	def _getModel(self, paramsDict, numOfModel):
+	def __init__(self, numOfModel):
+		self._getModel(numOfModel)
+
+	def _getModel(self, numOfModel):
+
+		# Model 1: simple convectional model.
+		# Inspired by DeepBind
 		if numOfModel == 1:
 			inputs = Input(shape=(36, 4))
 			conv = Conv1D(256, 11, activation='relu')(inputs)
 			max = (MaxPooling1D(6))(conv)
 			drop = Dropout(0.25)(max)
-			# conv2 = Conv1D(256, 11, activation='relu')(drop)
-			# max2 = (MaxPooling1D(2))(conv2)
-			# drop2 = Dropout(0.25)(max2)
-
-			# squeez = Lambda(squeezLayer)(drop)
-			# attention_probs = Dense(256, activation='softmax', name='attention_probs')(squeez)
-			# sent_representation = multiply([squeez, attention_probs])
-			# output = Dense(1, activation='sigmoid')(sent_representation)
-
-			r_drop = Reshape((256, 4))(drop)
-			attention_probs = Dense(1, activation='softmax', name='attention_probs')(r_drop)
-			sent_representation = multiply([r_drop, attention_probs])
-
-			sumLayer = Lambda(lambda x: K.sum(x, axis=1))(sent_representation)
-			output = Dense(1, activation='sigmoid')(sumLayer)
+			fc = Dense(1, activation='relu')(drop)
+			output = Dense(1, activation='sigmoid')(fc)
 			model = Model(inputs=inputs, outputs=output)
 			model.compile(loss=keras.losses.binary_crossentropy,
-			              optimizer=keras.optimizers.Adam(decay=paramsDict['lr_decay']),
+			              optimizer=keras.optimizers.Adam(decay=parameters['lr_decay']),
 			              metrics=['accuracy'])
 
 			self.model = model
 
-		elif numOfModel == 3:
-			inputs = Input(shape=(36, 4))
-			conv = Conv1D(256, 22, activation='relu')(inputs)
-			max = (MaxPooling1D(8))(conv)
-			drop = Dropout(0.25)(max)
-			squeez = Lambda(squeezLayer)(drop)
-
-			output = Dense(1, activation='sigmoid')(squeez)
-
-			model = Model(inputs=inputs, outputs=output)
-			model.compile(loss=keras.losses.binary_crossentropy,
-			              optimizer=keras.optimizers.Adam(decay=0),
-			              metrics=['accuracy'])
-
-			self.model = model
-
-
+		# Model 2: three-way convectional model.
+		# Calculates three parallel trails, each searching for different size motif length.
 		elif numOfModel == 2:
-			input_shape = Input(shape=(36, 4))
+			inputs = Input(shape=(36, 4))
 
-			trail1 = Conv1D(paramsDict['depth'][0], 8, activation='relu', padding='same')(input_shape)
-			trail1 = MaxPooling1D(paramsDict['max_pool'])(trail1)
-			if paramsDict['dropout']:
-				trail1 = Dropout(paramsDict['dropout'])(trail1)
+			trail1 = Conv1D(parameters['depth'][0], 8, activation='relu', padding='same')(inputs)
+			trail1 = MaxPooling1D(parameters['max_pool'])(trail1)
+			if parameters['dropout']:
+				trail1 = Dropout(parameters['dropout'])(trail1)
 
-			trail2 = Conv1D(paramsDict['depth'][1], 12, activation='relu', padding='same')(input_shape)
-			trail2 = MaxPooling1D(paramsDict['max_pool'])(trail2)
-			if paramsDict['dropout']:
-				trail2 = Dropout(paramsDict['dropout'])(trail2)
+			trail2 = Conv1D(parameters['depth'][1], 12, activation='relu', padding='same')(inputs)
+			trail2 = MaxPooling1D(parameters['max_pool'])(trail2)
+			if parameters['dropout']:
+				trail2 = Dropout(parameters['dropout'])(trail2)
 
-			trail3 = Conv1D(paramsDict['depth'][2], 24, activation='relu', padding='same')(input_shape)
-			trail3 = MaxPooling1D(paramsDict['max_pool'])(trail3)
-			if paramsDict['dropout']:
-				trail3 = Dropout(paramsDict['dropout'])(trail3)
+			trail3 = Conv1D(parameters['depth'][2], 24, activation='relu', padding='same')(inputs)
+			trail3 = MaxPooling1D(parameters['max_pool'])(trail3)
+			if parameters['dropout']:
+				trail3 = Dropout(parameters['dropout'])(trail3)
 
-			merged = keras.layers.concatenate([trail1, trail2, trail3], axis=2)
+			merged = concatenate([trail1, trail2, trail3], axis=2)
 			merged = Flatten()(merged)
 
-			fc = Dense(paramsDict['hidden_size'], activation='relu')(merged)
-			if paramsDict['dropout']:
-				fc = Dropout(paramsDict['dropout'])(fc)
+			fc = Dense(parameters['hidden_size'], activation='relu')(merged)
+			if parameters['dropout']:
+				fc = Dropout(parameters['dropout'])(fc)
 
-			out = Dense(1, activation='sigmoid')(fc)
+			output = Dense(1, activation='sigmoid')(fc)
 
-			model = Model(input_shape, out)
+			model = Model(inputs, output)
 
-			if paramsDict['optimizer'] == 'adam':
-				optimizer = keras.optimizers.Adam(decay=paramsDict['lr_decay'])
-			elif paramsDict['optimizer'] == 'ada_delta':
+			if parameters['optimizer'] == 'adam':
+				optimizer = keras.optimizers.Adam(decay=parameters['lr_decay'])
+
+			elif parameters['optimizer'] == 'ada_delta':
 				optimizer = keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0)
 
 			model.compile(loss=keras.losses.binary_crossentropy,
@@ -112,12 +96,15 @@ class SimpleModel():
 		                                           workers=n_workers, verbose=0)
 		return predictions
 
-# def attention_layer(input_dims):
-# 	inputs = Input(shape=(input_dims,))
-# 	attention_probs = Dense(input_dims, activation='softmax', name='attention_probs')(inputs)
-# 	contex_vector = merge([inputs, attention_probs], name='attention_mul', mode='mul')
 
-
+#########################################################################
+# Description: Helper function for parameters search.
+#              Generates randomly selected permutations of hyper-params.
+#              The function was used during the model development stage.
+#
+# Input: numOfModel
+# Output: paramsDict
+#########################################################################
 def getParamsDict(numOfModel):
 
 	if numOfModel==1:

@@ -27,6 +27,18 @@ def _main(numOfRuns=20):
 
 	# Permutate paramsDict to
 	paramsDict = getParamsDict(modelNum)
+	paramsDict['depth'] = [80, 80, 96]
+	paramsDict['max_pool'] = 10
+	paramsDict['dropout'] = 0.5
+	paramsDict['hidden_size'] = 128
+	paramsDict['lr_decay'] = 1e-06
+	paramsDict['optimizer'] = 'adam'
+
+	printDict(paramsDict)
+	print('compliment : False')
+	print('batch_size : 64')
+	print('balanced_data : True')
+	print('Compliment - longer num of steps per epoch')
 
 	# Run the nn over num of samples
 	resDict = {}
@@ -44,7 +56,7 @@ def _main(numOfRuns=20):
 		# Create and train the model
 		model = SimpleModel(paramsDict, modelNum)
 		model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
-		            steps_per_epoch=None, n_epochs=3, n_workers=6)
+		            steps_per_epoch=15000, n_epochs=3, n_workers=6)
 
 		# Evaluate the model
 		predictions = model.predict(dataPipe.test_generator, 6)

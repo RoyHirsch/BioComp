@@ -1,8 +1,10 @@
 {
     "input_shape": [36 ,4],
-    "batch_size": 32,
+    "batch_size": 16,
     "train_percentage": 0.7,
     "epochs":10,
+    "compliment": 0,
+    "balanced_data": 1,
     "data_format": "NHWC",
     
     "conv_kernel_size": [3],

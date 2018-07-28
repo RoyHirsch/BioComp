@@ -50,10 +50,10 @@ class DataPipeline(object):
 
 		# Create generators for the data
 		self.train_generator = DataGenerator(self.trainData, self.trainLabel, parameters['batch_size'],
-		                                     parameters['input_shape'], True)
+		                                     parameters['input_shape'], parameters['compliment'], True)
 
 		self.validation_generator = DataGenerator(self.validationData, self.validationLabel, parameters['batch_size'],
-		                                     parameters['input_shape'], True)
+		                                     parameters['input_shape'], parameters['compliment'], True)
 
 		self.test_generator = TestDataGenerator(self.testData, parameters['batch_size'],
 		                                     parameters['input_shape'], False)
@@ -113,21 +113,21 @@ class DataPipeline(object):
 		labelPositive = np.ones([numberLabelPositive, 1])
 		labelNegative = np.zeros([numberLabelNegative, 1])
 
-		# TODO :  A tryout - balanced data
-		minNum = min(numberLabelPositive, numberLabelNegative)
-		if numberLabelPositive == minNum:
-			label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[-1]], axis=0)
+		if parameters['balanced_data']:
+			minNum = min(numberLabelPositive, numberLabelNegative)
+			if numberLabelPositive == minNum:
+				label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
+				selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[-1]], axis=0)
 
+			else:
+				label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
+				selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1][:minNum]], axis=0)
 		else:
-			label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1][:minNum]], axis=0)
+			# Label of all Selex data
+			label = np.concatenate((labelNegative, labelPositive), axis=0)
 
-		# Label of all Selex data
-		# label = np.concatenate((labelNegative, labelPositive), axis=0)
-
-		# selexArray = np.concatenate(selexsFilesList, axis=0) # shape: [num_of_rows, 2]
-		# selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1]], axis=0)
+			selexArray = np.concatenate(selexsFilesList, axis=0) # shape: [num_of_rows, 2]
+			selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1]], axis=0)
 
 		# Extract only the strings without the 'count' value
 		#  TODO: maybe use the count value ?
@@ -174,13 +174,14 @@ class DataPipeline(object):
 # Output: DataGenerator obj
 #########################################################################
 class DataGenerator(keras.utils.Sequence):
-	def __init__(self, data, label, batch_size, dim, shuffle=True):
+	def __init__(self, data, label, batch_size, dim, compliment, shuffle):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.label = label
 		self.data = data
 		self.n_channels = 1
 		self.n_classes = 1
+		self.compliment = compliment
 		self.shuffle = shuffle
 		self.on_epoch_end()
 
@@ -202,10 +203,22 @@ class DataGenerator(keras.utils.Sequence):
 	def __getitem__(self, index):
 		indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
 		batchData = [self.data[k] for k in indexes]
+
+		if self.compliment:
+			trantab = str.maketrans('ACGT', 'TGCA')
+			lenBatch = len(batchData)
+			for tmp in range(lenBatch):
+				batchData.append(np.array([str(batchData[tmp][0]).translate(trantab)]))
+
 		batchData = list(map(oneHotZeroPad, batchData))
 		batchData = np.stack(batchData, axis=0)
 		batchLabel = np.array([self.label[k] for k in indexes]).reshape(self.batch_size, self.n_classes)
+
+		if self.compliment:
+			batchLabel = np.concatenate((batchLabel, batchLabel), axis=0)
+
 		return batchData, batchLabel
+
 
 #########################################################################
 # Description: Creates 'Generator' object that holds the date pipe for test data (PBM file).

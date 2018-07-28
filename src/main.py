@@ -1,6 +1,5 @@
 import os
 import sys
-
 sys.path.append(os.path.realpath(__file__ + "/../../"))
 from Utils import read_data, util_functions
 from simple_model import NetModel
@@ -31,7 +30,7 @@ def _main():
 	print(AUPR)
 
 	sortedPBMarray = util_functions.sortPBM(dataPipe.testData, predictions)
-	util_functions.dumpPDMtoFile(os.path.realpath(__file__ + "/../"),'sortedPBM', sortedPBMarray)
+	util_functions.dumpPBMtoFile(os.path.realpath(__file__ + "/../"), 'sortedPBM', sortedPBMarray)
 
 if __name__ == '__main__':
 	_main()

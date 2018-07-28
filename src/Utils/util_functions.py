@@ -45,10 +45,10 @@ def sortPBM(originalPBMdata, predictionsPerString):
 # Input: folder, fileName, sortedPDMStrings
 # Output: creates a .txt file
 #########################################################################
-def dumpPDMtoFile(folder, fileName, sortedPDMStrings):
-	fullFilePath = folder + fileName + '.txt'
+def dumpPBMtoFile(folder, fileName, sortedPDMStrings):
+	fullFilePath = os.path.join(folder, fileName + '.txt')
 	np.savetxt(fullFilePath, sortedPDMStrings, delimiter=" ", fmt="%s")
-	print('The sorted PBM file was saves to {}'.format(fullFilePath))
+	print('The sorted PBM file was saved to {}'.format(fullFilePath))
 	return
 
 #########################################################################

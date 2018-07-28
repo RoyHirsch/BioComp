@@ -1,7 +1,3 @@
-'''
-simple function to read and pre-process the data
-'''
-
 import os
 import time
 import keras
@@ -11,7 +7,7 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import SGD
-from Utils.parameters import parameters
+from Utils.util_functions import get_model_parameters
 
 ########################
 # CONSTANTS
@@ -22,21 +18,17 @@ PBM_LEN = 36
 
 ########################
 # LOAD PARAMS
+# Reads external json file with parameters.
 ########################
 params_file_name = os.path.abspath(__file__ + '/../') + '/config.json'
-parameters = parameters(params_file_name)
+parameters = get_model_parameters(params_file_name)
 
 #########################################################################
-# Description: This class manages the data loading to the model.
+# Description: This class manages the data loading of the model.
 # 			   It gets the PBM and SELEX path as arguments and generates the data generators.
-# 	           the relevant train and test data per experiment.
-# Input: listOfSysArgs
-#        argsDist (optional)
-#                trainPercentage - num in [0,1]
-#                batch_size      - int
-#                dim             - tupal of ints
-#                n_channels      - int
-#                n_classes       - int
+# 	           The relevant train and test data per experiment.
+#
+# Input: listOfSysArgs - from the calling to the main.py script
 # Output: DataPipeline obj
 #########################################################################
 class DataPipeline(object):
@@ -61,13 +53,13 @@ class DataPipeline(object):
 
 	#########################################################################
 	# Description: Read and pre-process the SELEX and PBM data.
-	# Input:
+	# Input: listOfSysArgs
 	# Output: trainData, validationData, trainLabel, validationLabel, testData
 	#########################################################################
 	def _get_data_and_labels_for_sample_number(self, listOfSysArgs):
 
 		# TODO: needs to delete before submition !
-		# Get the absulote path of the Selex and PBM files
+		# Get the absolute path of the Selex and PBM files
 		trainDataRoot = os.path.realpath(__file__ + "/../../../") + '/train/'
 
 		pbmFilePath = os.path.abspath(os.path.join(trainDataRoot, listOfSysArgs[1]))
@@ -75,7 +67,7 @@ class DataPipeline(object):
 		for file in range(2, len(listOfSysArgs)):
 			selexFilesPathList.append(os.path.abspath(os.path.join(trainDataRoot, listOfSysArgs[file])))
 
-		# Read PBM test file:
+		# Read PBM file:
 		currTime = time.time()
 		pbmFile = self.read_pbm_file(pbmFilePath)
 
@@ -89,39 +81,38 @@ class DataPipeline(object):
 
 		# Pre-process the data:
 		trainData, validationData, trainLabel, validationLabel = self.process_selex_data(selexFiles)
-		# testData = self.process_PBM_data(pbmFile)
-		testData = pbmFile
+		testData = self.process_PBM_data(pbmFile)
 
 		return trainData, validationData, trainLabel, validationLabel, testData
 
 	#########################################################################
 	# Description: Naive implementation for extracting SELEX data.
-	#              Cycle '0' will be labeled as negative and the other cycles as positive.
+	#              Cycle '0' will be labeled as negative and the last cycle as positive.
 	#              Basically the function generates the train and validation data.
+	#
 	# Input: selexsFilesList
 	# Output: trainData, validationData, trainLabel, validationLabel
 	#########################################################################
 	def process_selex_data(self, selexsFilesList):
 
-		# Create united data array and label array
-		# Naive assumption - cycle 0 is negative class.
-
-		# TODO: ROY 0107 a tryout cycle 0 is False and the last cycle in True
-		# numberLabelPositive = np.sum(len(selexsFilesList[num]) for num in range(1, len(selexsFilesList)))
+		# Cycle 0 is False and the last cycle in True
 		numberLabelPositive = len(selexsFilesList[-1])
 		numberLabelNegative = len(selexsFilesList[0])
 
 		labelPositive = np.ones([numberLabelPositive, 1])
 		labelNegative = np.zeros([numberLabelNegative, 1])
 
-		# Label of all Selex data
-		label = np.concatenate((labelNegative, labelPositive), axis=0)
+		# Filter the data to create equal distribution of the positive and negative labels.
+		minNum = min(numberLabelPositive, numberLabelNegative)
+		if numberLabelPositive == minNum:
+			label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
+			selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[-1]], axis=0)
 
-		# selexArray = np.concatenate(selexsFilesList, axis=0) # shape: [num_of_rows, 2]
-		selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1]], axis=0)
+		else:
+			label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
+			selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1][:minNum]], axis=0)
 
 		# Extract only the strings without the 'count' value
-		#  TODO: maybe use the count value ?
 		data = selexArray[:, 0].reshape([-1, 1])
 
 		# Shuffle the Selex data
@@ -134,11 +125,12 @@ class DataPipeline(object):
 		slice = round(trainPercentage * data.shape[0])
 		trainData, validationData = data[:slice,:], data[slice:,:]
 		trainLabel, validationLabel = label[:slice], label[slice:]
+
 		print('Train dimensions: {}.\nValidation dimensions: {}.'.format(np.shape(trainData), np.shape(validationData)))
 
 		return trainData, validationData, trainLabel, validationLabel
 
-	# placeholder function
+	# Placeholder function for processing of PBM data
 	def process_PBM_data(self, pbmData):
 		return pbmData
 
@@ -161,11 +153,15 @@ class DataPipeline(object):
 
 #########################################################################
 # Description: Creates 'Generator' object that holds the date pipe for train/val data.
-# Input:
+#              Generator is a Python data structer that being evaluated only during runtime.
+#              It allows to load and pre-process large amount of data in efficient way
+#              and parallel to the models training.
+#
+# Input: data, label, batch_size, dim, compliment, shuffle
 # Output: DataGenerator obj
 #########################################################################
 class DataGenerator(keras.utils.Sequence):
-	def __init__(self, data, label, batch_size, dim, shuffle=True):
+	def __init__(self, data, label, batch_size, dim, shuffle):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.label = label
@@ -180,14 +176,17 @@ class DataGenerator(keras.utils.Sequence):
 		return int(np.floor(len(self.data) / self.batch_size))
 
 	def on_epoch_end(self):
-		# Updates indexes after each epoch
+		# Updates indexes after each epoch, to shuffle the training data.
 		self.indexes = np.arange(len(self.data))
 		if self.shuffle == True:
 			np.random.shuffle(self.indexes)
 
 	#########################################################################
-	# Description: Generate one batch of data, evalutes and pre-process the data.
-	# Input:
+	# Description: Generate one batch of data, evaluates and pre-process the data.
+	#              While calling keras function 'fit_generator' this method is being called
+	#              for each step to generate the batch data.
+	#
+	# Input: index - starting index to extract the batch from
 	# Output: DataGenerator obj
 	#########################################################################
 	def __getitem__(self, index):
@@ -196,6 +195,7 @@ class DataGenerator(keras.utils.Sequence):
 		batchData = list(map(oneHotZeroPad, batchData))
 		batchData = np.stack(batchData, axis=0)
 		batchLabel = np.array([self.label[k] for k in indexes]).reshape(self.batch_size, self.n_classes)
+
 		return batchData, batchLabel
 
 #########################################################################
@@ -233,13 +233,25 @@ class TestDataGenerator(keras.utils.Sequence):
 ########################
 # HELPER FUNCTIONS
 ########################
+
+#########################################################################
+# Description: Translate the string into a one hot encoded matrix.
+#              Cut the end of each string (to keep only 36 chars)
+# Input: string
+# Output: matrix [36, 4]
+#########################################################################
 def oneHotPBM(string):
-	# Cut the end of each string (to keep only 36 chars)
 	trantab = str.maketrans('ACGT', '0123')
 	string = string[:36] + 'ACGT'
 	data = list(string.translate(trantab))
 	return to_categorical(data)[:-4]
 
+#########################################################################
+# Description: Translate the string into a one hot encoded matrix.
+#              If string is smaller then maxSize,, pad the matrix.
+# Input: string
+# Output: matrix [36, 4]
+#########################################################################
 def oneHotZeroPad(string, maxSize=PBM_LEN):
 	trantab = str.maketrans('ACGT', '0123')
 	string = string[0] + 'ACGT'
@@ -248,12 +260,14 @@ def oneHotZeroPad(string, maxSize=PBM_LEN):
 	# Convert to one-hot matrix: Lx4
 	matrix = to_categorical(data)[:-4]
 
-	# Zero pad to maxSizex4
+	# Pad to maxSizex4
 	length = len(string) - 4
 	pad = (maxSize - length) // 2
 	if ((maxSize - length) // 2 != (maxSize - length) / 2):
 		raise ValueError('Cannot zero pad the string')
 
 	padMatrix = np.full((pad, 4), 0.25)
+	# Inactive option for zero pad
 	# padMatrix = np.zeros([pad, 4])
+
 	return np.concatenate((padMatrix, matrix, padMatrix), axis=0)

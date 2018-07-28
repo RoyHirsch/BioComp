@@ -130,8 +130,8 @@ def getTrainSample(dataRoot):
 			break
 	return sampleNum, filesList
 
-def getTrainSampleFromList(dataRoot, ind):
-	listOfSamples = [57, 59, 86, 80, 41, 54, 9, 108, 73, 30, 62, 96, 5, 50, 74, 24, 99, 101, 68, 31]
+def getTrainSampleFromList(dataRoot,listOfSamples, ind):
+	#listOfSamples = [57, 59, 86, 80, 41, 54, 9, 108, 73, 30, 62, 96, 5, 50, 74, 24, 99, 101, 68, 31]
 	sampleNum = listOfSamples[ind]
 
 	fileList = os.listdir(dataRoot)

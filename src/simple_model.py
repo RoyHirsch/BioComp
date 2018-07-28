@@ -3,7 +3,7 @@ import tensorflow as tf
 
 import os
 import random
-from Utils.util_functions import f1
+#from Utils.util_functions import f1
 from keras.layers import Dense, Dropout, Flatten, Activation, multiply, Permute, Lambda, Add, Reshape
 from keras.layers import Conv1D, MaxPooling1D
 from keras.layers import merge, Input, add
@@ -23,7 +23,7 @@ class SimpleModel():
 			inputs = Input(shape=(36, 4))
 			conv = Conv1D(256, 11, activation='relu')(inputs)
 			max = (MaxPooling1D(6))(conv)
-			drop = Dropout(0.25)(max)
+			drop = Dropout(0.5)(max)
 			# conv2 = Conv1D(256, 11, activation='relu')(drop)
 			# max2 = (MaxPooling1D(2))(conv2)
 			# drop2 = Dropout(0.25)(max2)
@@ -50,7 +50,7 @@ class SimpleModel():
 			inputs = Input(shape=(36, 4))
 			conv = Conv1D(256, 22, activation='relu')(inputs)
 			max = (MaxPooling1D(8))(conv)
-			drop = Dropout(0.25)(max)
+			drop = Dropout(0.5)(max)
 			squeez = Lambda(squeezLayer)(drop)
 
 			output = Dense(1, activation='sigmoid')(squeez)
@@ -104,8 +104,12 @@ class SimpleModel():
 			self.model = model
 
 	def train(self, tain_generator, validation_generator, steps_per_epoch, n_epochs, n_workers):
-		self.model.fit_generator(generator=tain_generator, validation_data=validation_generator, steps_per_epoch=steps_per_epoch, epochs=n_epochs,
-		                         use_multiprocessing=n_workers!=0, workers=n_workers,verbose=2)
+
+		early_stoping = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0, patience=0, verbose=1, mode='auto')
+
+		self.model.fit_generator(generator=tain_generator, validation_data=validation_generator,
+								 steps_per_epoch=steps_per_epoch, epochs=n_epochs,
+		                         use_multiprocessing=n_workers!=0, workers=n_workers,verbose=1,callbacks=[early_stoping])
 
 	def predict(self, test_generator, n_workers):
 		predictions = self.model.predict_generator(generator=test_generator, use_multiprocessing=n_workers!=0,

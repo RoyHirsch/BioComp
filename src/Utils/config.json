@@ -11,15 +11,15 @@
     "conv_filters": 32,
     "strides": [1],
     "pool_size":[2],
-    "dropout": 0.25,
+    "dropout": 0.5,
 
-    "learning_rate":0.001,
+    "learning_rate":1,
     "momentum":0.9,
     "activation1": "relu",
     "activation2": "sigmoid",
     "fc_activation":"softmax",
     "loss": "binary_crossentropy",
-    "optimizer": "Adam",
+    "optimizer": "Adadelta",
     "pool_strides": 2,
     "regularization_coeff": 0.01
 

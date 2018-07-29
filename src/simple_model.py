@@ -141,12 +141,12 @@ def getParamsDict(numOfModel):
 
 	elif numOfModel == 2:
 		mainDict = {
-			'depth': [[40,40,48],[80,80,96]],
-			'dropout': [0, 0.25, 0.5],
-			'hidden_size': [32, 64, 128],
-			'lr_decay': [0, 1e-6, 1e-7],
-			'max_pool': [2, 4, 6],
-			'optimizer': ['adam', 'ada_delta']
+			'depth': [[80,80,96]],
+			'dropout': [0.5],
+			'hidden_size': [128],
+			'lr_decay': [1e-6],
+			'max_pool': [10],
+			'optimizer': ['adam']
 		}
 
 		paramsDict = {}

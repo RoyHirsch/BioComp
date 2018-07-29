@@ -71,8 +71,10 @@ def _main(numOfRuns=3):
 			# Create and train the model
 			if selex == 1:
 				model = SimpleModel(paramsDict, modelNum)
+			model.model.summary()
 			model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
 		            steps_per_epoch=5000, n_epochs=1, n_workers=6)
+
 
 
 			# Evaluate the model

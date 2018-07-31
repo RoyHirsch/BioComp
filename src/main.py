@@ -13,9 +13,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 ######################
 numOfRuns = 1
 modelNum = 2
+Reverse = False
+use_only_edge_selex = True
 
 
-def _main(numOfRuns=3):
+
+def _main(numOfRuns=1):
 
 	ind = 0
 	yaronAUPR = []
@@ -52,28 +55,43 @@ def _main(numOfRuns=3):
 		sampleNum, filesList = util_functions.getTrainSampleFromList(dataRoot=os.path.realpath(__file__ + '/../../')+'/train',
 		                                                             listOfSamples=listOfSamples,
 		                                                             ind=ind)
-		ind += 1
+
 		selex_num.append(len(filesList) - 3)
 		selex_index = np.linspace(1, selex_num[sample], selex_num[sample])
-		selex = 1
-		dataPipe = read_data.DataPipeline(filesList, int(selex))
+		if use_only_edge_selex:
+			tmp = [selex_index[0], selex_index[-1]]
+			selex_index = []
+			selex_index = tmp
+		if Reverse:
+			first_selex = int(selex_index[-1])
+			selex_index = np.flip(selex_index,axis=0)
+
+		else:
+			first_selex = 1
+		ind += 1
+
+		dataPipe = read_data.DataPipeline(filesList, first_selex)
 		test_length = len(dataPipe.testData)
 		tmp_predictions = np.zeros([selex_num[sample], test_length])
+
+
+
 		for selex in selex_index:
+
 			#if np.any(selex == [3,4]):
 			#	continue
 			selex = int(selex)
 			print('+++++++++ selex number %i +++++++++' % selex)
-			if selex != 1:
+			if selex != first_selex:
 				# Create data pipeline obj
 				dataPipe = read_data.DataPipeline(filesList, selex)
 
 			# Create and train the model
-			if selex == 1:
+			if selex == first_selex:
 				model = SimpleModel(paramsDict, modelNum)
-			model.model.summary()
+			#model.model.summary()
 			model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
-		            steps_per_epoch=5000, n_epochs=1, n_workers=6)
+		            steps_per_epoch=1, n_epochs=1, n_workers=6)
 
 
 

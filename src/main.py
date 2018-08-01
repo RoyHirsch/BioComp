@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 numOfRuns = 1
 modelNum = 2
 Reverse = False
-use_only_edge_selex = True
+use_only_edge_selex = False
 
 
 
@@ -91,7 +91,7 @@ def _main(numOfRuns=1):
 				model = SimpleModel(paramsDict, modelNum)
 			#model.model.summary()
 			model.train(tain_generator=dataPipe.train_generator, validation_generator=None,
-		            steps_per_epoch=1, n_epochs=1, n_workers=6)
+		            steps_per_epoch=1500, n_epochs=1, n_workers=6)
 
 
 

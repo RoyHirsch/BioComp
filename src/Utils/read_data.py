@@ -115,20 +115,22 @@ class DataPipeline(object):
 		labelNegative = np.zeros([numberLabelNegative, 1])
 
 		# TODO :  A tryout - balanced data
-		minNum = min(numberLabelPositive, numberLabelNegative)
-		if numberLabelPositive == minNum:
-			label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[self.selex]], axis=0)
 
-		else:
-			label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[self.selex][:minNum]], axis=0)
+
+		#minNum = min(numberLabelPositive, numberLabelNegative)
+		#if numberLabelPositive == minNum:
+		#	label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
+		#	selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[self.selex]], axis=0)
+
+		#else:
+		#	label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
+		#	selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[self.selex][:minNum]], axis=0)
 
 		# Label of all Selex data
-		# label = np.concatenate((labelNegative, labelPositive), axis=0)
+		label = np.concatenate((labelNegative, labelPositive), axis=0)
 
-		# selexArray = np.concatenate(selexsFilesList, axis=0) # shape: [num_of_rows, 2]
-		# selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1]], axis=0)
+		#selexArray = np.concatenate(selexsFilesList, axis=0) # shape: [num_of_rows, 2]
+		selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[self.selex]], axis=0)
 
 		# Extract only the strings without the 'count' value
 		#  TODO: maybe use the count value ?

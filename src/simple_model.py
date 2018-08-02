@@ -23,15 +23,17 @@ parameters = get_model_parameters(params_file_name)
 #########################################################################
 class NetModel():
 
-	def __init__(self, numOfModel):
+	def __init__(self, numOfModel, input_shape):
+		self.input_shape = input_shape
 		self._getModel(numOfModel)
+
 
 	def _getModel(self, numOfModel):
 
 		# Model 1: simple convectional model.
 		# Inspired by DeepBind
 		if numOfModel == 1:
-			inputs = Input(shape=(36, 4))
+			inputs = Input(shape=self.input_shape)
 			conv = Conv1D(256, 11, activation='relu')(inputs)
 			max = (MaxPooling1D(6))(conv)
 			drop = Dropout(0.25)(max)
@@ -47,7 +49,7 @@ class NetModel():
 		# Model 2: three-way convectional model.
 		# Calculates three parallel trails, each searching for different size motif length.
 		elif numOfModel == 2:
-			inputs = Input(shape=(36, 4))
+			inputs = Input(shape=self.input_shape)
 
 			trail1 = Conv1D(parameters['depth'][0], 8, activation='relu', padding='same')(inputs)
 			trail1 = MaxPooling1D(parameters['max_pool'])(trail1)

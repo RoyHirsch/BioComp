@@ -34,7 +34,7 @@ parameters = get_model_parameters(params_file_name)
 class DataPipeline(object):
 
 	def __init__(self, listOfSysArgs):
-		print('+++++++++ DataPipeline was created +++++++++')
+		#print('+++++++++ DataPipeline was created +++++++++')
 
 		# Load and pre-process the data
 		self.trainData, self.validationData, self.trainLabel, self.validationLabel, self.testData = \
@@ -75,9 +75,9 @@ class DataPipeline(object):
 		selexFiles = []
 		for selexPath in selexFilesPathList:
 			selexFiles.append(self.read_selex_file(selexPath))
-		print('Loaded PBM and SELEX files')
+		#print('Loaded PBM and SELEX files')
 		endTime = time.time()
-		print('Loading the data took {} seconds.'.format(round(endTime-currTime, 2)))
+		#print('Loading the data took {} seconds.'.format(round(endTime-currTime, 2)))
 
 		# Pre-process the data:
 		trainData, validationData, trainLabel, validationLabel = self.process_selex_data(selexFiles)
@@ -126,7 +126,7 @@ class DataPipeline(object):
 		trainData, validationData = data[:slice,:], data[slice:,:]
 		trainLabel, validationLabel = label[:slice], label[slice:]
 
-		print('Train dimensions: {}.\nValidation dimensions: {}.'.format(np.shape(trainData), np.shape(validationData)))
+		#print('Train dimensions: {}.\nValidation dimensions: {}.'.format(np.shape(trainData), np.shape(validationData)))
 
 		return trainData, validationData, trainLabel, validationLabel
 

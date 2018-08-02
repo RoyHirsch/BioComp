@@ -48,7 +48,7 @@ def sortPBM(originalPBMdata, predictionsPerString):
 def dumpPBMtoFile(folder, fileName, sortedPDMStrings):
 	fullFilePath = os.path.join(folder, fileName + '.txt')
 	np.savetxt(fullFilePath, sortedPDMStrings, delimiter=" ", fmt="%s")
-	print('The sorted PBM file was saved to {}'.format(fullFilePath))
+	#print('The sorted PBM file was saved to {}'.format(fullFilePath))
 	return
 
 #########################################################################
@@ -64,7 +64,7 @@ def getAUPR(groundTrue, predict):
 
 	# The area under the precision-recall curve is the AUPR
 	aupr = average_precision_score(true, predict)
-	print('AUPR = {}'.format(np.round(aupr, 4)))
+	#print('AUPR = {}'.format(np.round(aupr, 4)))
 	return aupr
 
 

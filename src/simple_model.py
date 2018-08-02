@@ -89,7 +89,7 @@ class NetModel():
 
 	def train(self, tain_generator, validation_generator, steps_per_epoch, n_epochs, n_workers):
 		self.model.fit_generator(generator=tain_generator, validation_data=validation_generator, steps_per_epoch=steps_per_epoch, epochs=n_epochs,
-		                         use_multiprocessing=n_workers!=0, workers=n_workers,verbose=2)
+		                         use_multiprocessing=n_workers!=0, workers=n_workers,verbose=0)
 
 	def predict(self, test_generator, n_workers):
 		predictions = self.model.predict_generator(generator=test_generator, use_multiprocessing=n_workers!=0,

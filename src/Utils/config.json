@@ -2,7 +2,7 @@
     "input_shape": [36 ,4],
     "batch_size": 32,
     "train_percentage": 0.7,
-    "steps_per_epoch": 15000,
+    "steps_per_epoch": 10,
     "n_epochs": 3,
     "n_workers": 6,
     "data_format": "NHWC",

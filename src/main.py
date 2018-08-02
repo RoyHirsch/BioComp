@@ -33,4 +33,6 @@ def _main():
 	util_functions.dumpPBMtoFile(os.path.realpath(__file__ + "/../"), 'sortedPBM', sortedPBMarray)
 
 if __name__ == '__main__':
+	import sys
+
 	_main()

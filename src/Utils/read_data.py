@@ -42,13 +42,13 @@ class DataPipeline(object):
 
 		# Create generators for the data
 		self.train_generator = DataGenerator(self.trainData, self.trainLabel, parameters['batch_size'],
-		                                     parameters['input_shape'], True, self.selex_size)
+											 True, self.selex_size)
 
 		self.validation_generator = DataGenerator(self.validationData, self.validationLabel, parameters['batch_size'],
-		                                     parameters['input_shape'], True, self.selex_size)
+												  True, self.selex_size)
 
 		self.test_generator = TestDataGenerator(self.testData, parameters['batch_size'],
-		                                     parameters['input_shape'], False, self.selex_size)
+												False, self.selex_size)
 
 		self.input_shape  = (max(PBM_LEN,self.selex_size),4)
 	#########################################################################
@@ -161,8 +161,7 @@ class DataPipeline(object):
 # Output: DataGenerator obj
 #########################################################################
 class DataGenerator(keras.utils.Sequence):
-	def __init__(self, data, label, batch_size, dim, shuffle, selex_size):
-		self.dim = dim
+	def __init__(self, data, label, batch_size, shuffle, selex_size):
 		self.batch_size = batch_size
 		self.label = label
 		self.data = data
@@ -205,8 +204,7 @@ class DataGenerator(keras.utils.Sequence):
 # Output: TestDataGenerator obj
 #########################################################################
 class TestDataGenerator(keras.utils.Sequence):
-	def __init__(self, data, batch_size, dim, shuffle, selex_size):
-		self.dim = dim
+	def __init__(self, data, batch_size, shuffle, selex_size):
 		self.batch_size = batch_size
 		self.data = data
 		self.n_channels = 1

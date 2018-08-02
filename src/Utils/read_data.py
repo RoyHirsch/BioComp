@@ -8,7 +8,7 @@ from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import SGD
 from Utils.util_functions import get_model_parameters
-import functools
+
 ########################
 # CONSTANTS
 ########################
@@ -35,7 +35,7 @@ class DataPipeline(object):
 
 	def __init__(self, listOfSysArgs):
 		#print('+++++++++ DataPipeline was created +++++++++')
-
+		self.TF_index = listOfSysArgs[1].split('_')[0][2:]
 		# Load and pre-process the data
 		self.trainData, self.validationData, self.trainLabel, self.validationLabel, self.testData = \
 			self._get_data_and_labels_for_sample_number(listOfSysArgs)
@@ -50,7 +50,7 @@ class DataPipeline(object):
 		self.test_generator = TestDataGenerator(self.testData, parameters['batch_size'],
 		                                     parameters['input_shape'], False, self.selex_size)
 
-
+		self.input_shape  = (max(PBM_LEN,self.selex_size),4)
 	#########################################################################
 	# Description: Read and pre-process the SELEX and PBM data.
 	# Input: listOfSysArgs
@@ -272,7 +272,7 @@ def oneHotZeroPadPBM(string,selex_size):
 # Output: matrix [max(PBM_LEN,selex_size), 4]
 #########################################################################
 def oneHotZeroPad(string):
-	maxSize = max(PBM_LEN, len(string))
+	maxSize = max(PBM_LEN, len(string[0]))
 	trantab = str.maketrans('ACGT', '0123')
 	string = string[0] + 'ACGT'
 	data = list(string.translate(trantab))

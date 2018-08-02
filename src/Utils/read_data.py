@@ -8,7 +8,7 @@ from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import SGD
 from Utils.util_functions import get_model_parameters
-
+import functools
 ########################
 # CONSTANTS
 ########################
@@ -42,13 +42,13 @@ class DataPipeline(object):
 
 		# Create generators for the data
 		self.train_generator = DataGenerator(self.trainData, self.trainLabel, parameters['batch_size'],
-		                                     parameters['input_shape'], True)
+		                                     parameters['input_shape'], True, self.selex_size)
 
 		self.validation_generator = DataGenerator(self.validationData, self.validationLabel, parameters['batch_size'],
-		                                     parameters['input_shape'], True)
+		                                     parameters['input_shape'], True, self.selex_size)
 
 		self.test_generator = TestDataGenerator(self.testData, parameters['batch_size'],
-		                                     parameters['input_shape'], False)
+		                                     parameters['input_shape'], False, self.selex_size)
 
 
 	#########################################################################
@@ -78,7 +78,7 @@ class DataPipeline(object):
 		#print('Loaded PBM and SELEX files')
 		endTime = time.time()
 		#print('Loading the data took {} seconds.'.format(round(endTime-currTime, 2)))
-
+		self.selex_size = len(selexFiles[0][0][0])
 		# Pre-process the data:
 		trainData, validationData, trainLabel, validationLabel = self.process_selex_data(selexFiles)
 		testData = self.process_PBM_data(pbmFile)
@@ -161,7 +161,7 @@ class DataPipeline(object):
 # Output: DataGenerator obj
 #########################################################################
 class DataGenerator(keras.utils.Sequence):
-	def __init__(self, data, label, batch_size, dim, shuffle):
+	def __init__(self, data, label, batch_size, dim, shuffle, selex_size):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.label = label
@@ -170,6 +170,7 @@ class DataGenerator(keras.utils.Sequence):
 		self.n_classes = 1
 		self.shuffle = shuffle
 		self.on_epoch_end()
+		self.selex_size = selex_size
 
 	def __len__(self):
 		# Denotes the number of batches per epoch
@@ -204,7 +205,7 @@ class DataGenerator(keras.utils.Sequence):
 # Output: TestDataGenerator obj
 #########################################################################
 class TestDataGenerator(keras.utils.Sequence):
-	def __init__(self, data, batch_size, dim, shuffle=False):
+	def __init__(self, data, batch_size, dim, shuffle, selex_size):
 		self.dim = dim
 		self.batch_size = batch_size
 		self.data = data
@@ -212,6 +213,7 @@ class TestDataGenerator(keras.utils.Sequence):
 		self.n_classes = 1
 		self.shuffle = shuffle
 		self.on_epoch_end()
+		self.selex_size = selex_size
 
 	def on_epoch_end(self):
 		# Updates indexes after each epoch
@@ -226,7 +228,7 @@ class TestDataGenerator(keras.utils.Sequence):
 	def __getitem__(self, index):
 		indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
 		batchData = [self.data[k] for k in indexes]
-		batchData = list(map(oneHotPBM, batchData))
+		batchData = list(map(lambda batch: oneHotZeroPadPBM(batch,self.selex_size),batchData))
 		batchData = np.stack(batchData, axis=0)
 		return batchData
 
@@ -236,23 +238,41 @@ class TestDataGenerator(keras.utils.Sequence):
 
 #########################################################################
 # Description: Translate the string into a one hot encoded matrix.
-#              Cut the end of each string (to keep only 36 chars)
+#              Cut the end of each string (to keep only 36 chars),
+#              if string is smaller then maxSize,, pad the matrix.
 # Input: string
-# Output: matrix [36, 4]
+# Output: matrix [max(PBM_LEN,selex_size), 4]
 #########################################################################
-def oneHotPBM(string):
+def oneHotZeroPadPBM(string,selex_size):
+	maxSize = max(PBM_LEN, selex_size)
 	trantab = str.maketrans('ACGT', '0123')
 	string = string[:36] + 'ACGT'
 	data = list(string.translate(trantab))
-	return to_categorical(data)[:-4]
+
+	matrix = to_categorical(data)[:-4]
+
+	# Pad to maxSizex4
+	length = PBM_LEN
+	if maxSize==length:
+		return matrix
+	else:
+		pad = (maxSize - length) // 2
+		if ((maxSize - length) // 2 != (maxSize - length) / 2):
+			raise ValueError('Cannot zero pad the string')
+
+		padMatrix = np.full((pad, 4), 0.25)
+		# Inactive option for zero pad
+		# padMatrix = np.zeros([pad, 4])
+		return np.concatenate((padMatrix, matrix, padMatrix), axis=0)
 
 #########################################################################
 # Description: Translate the string into a one hot encoded matrix.
 #              If string is smaller then maxSize,, pad the matrix.
 # Input: string
-# Output: matrix [36, 4]
+# Output: matrix [max(PBM_LEN,selex_size), 4]
 #########################################################################
-def oneHotZeroPad(string, maxSize=PBM_LEN):
+def oneHotZeroPad(string):
+	maxSize = max(PBM_LEN, len(string))
 	trantab = str.maketrans('ACGT', '0123')
 	string = string[0] + 'ACGT'
 	data = list(string.translate(trantab))
@@ -262,12 +282,14 @@ def oneHotZeroPad(string, maxSize=PBM_LEN):
 
 	# Pad to maxSizex4
 	length = len(string) - 4
-	pad = (maxSize - length) // 2
-	if ((maxSize - length) // 2 != (maxSize - length) / 2):
-		raise ValueError('Cannot zero pad the string')
+	if maxSize==length:
+		return matrix
+	else:
+		pad = (maxSize - length) // 2
+		if ((maxSize - length) // 2 != (maxSize - length) / 2):
+			raise ValueError('Cannot zero pad the string')
 
-	padMatrix = np.full((pad, 4), 0.25)
-	# Inactive option for zero pad
-	# padMatrix = np.zeros([pad, 4])
-
-	return np.concatenate((padMatrix, matrix, padMatrix), axis=0)
+		padMatrix = np.full((pad, 4), 0.25)
+		# Inactive option for zero pad
+		# padMatrix = np.zeros([pad, 4])
+		return np.concatenate((padMatrix, matrix, padMatrix), axis=0)

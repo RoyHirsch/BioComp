@@ -3,8 +3,7 @@ import sys
 sys.path.append(os.path.realpath(__file__ + "/../../"))
 from Utils import read_data, util_functions
 from simple_model import NetModel
-
-
+import numpy as np
 
 
 def _main():
@@ -21,12 +20,30 @@ def _main():
 	# Create data pipeline obj
 	dataPipe = read_data.DataPipeline(sys.argv)
 
-	model = NetModel(numOfModel=2,input_shape=(dataPipe.input_shape))
-	model.train(tain_generator=dataPipe.train_generator,
-	            validation_generator=None,
-	            steps_per_epoch=parameters['steps_per_epoch'],
-	            n_epochs=parameters['n_epochs'],
-	            n_workers=parameters['n_workers'])
+	# If multi_selex mode is enabled, we train over each selex with the same model
+	if parameters["multi_selex"]:
+		number_of_selex = dataPipe.number_of_selex
+		steps_per_epoch = parameters['steps_per_epoch']/(number_of_selex-1)*np.linspace(0.5,2,number_of_selex-1)
+
+		for i in range(parameters['n_epochs']):
+			for selex in range(number_of_selex-1):
+				if selex==0 and i==0:
+					model = NetModel(numOfModel=2,input_shape=(dataPipe.input_shape))
+				model.train(tain_generator=dataPipe.train_generator[selex],
+	 		   		        validation_generator=None,
+	    		    	    steps_per_epoch=steps_per_epoch[selex]/(i+1),
+	    		    	    n_epochs=1,
+	    		    	    n_workers=parameters['n_workers'])
+
+	# If multi_selex mode is not enabled, we train over the first and last selex
+	else:
+		model = NetModel(numOfModel=2, input_shape=(dataPipe.input_shape))
+		model.train(tain_generator=dataPipe.train_generator,
+					validation_generator=None,
+					steps_per_epoch=parameters['steps_per_epoch'],
+					n_epochs=parameters['n_epochs'],
+					n_workers=parameters['n_workers'])
+
 
 	predictions = model.predict(dataPipe.test_generator, parameters['n_workers'])
 	AUPR = util_functions.getAUPR(dataPipe.testData, predictions)

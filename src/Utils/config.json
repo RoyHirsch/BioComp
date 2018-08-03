@@ -1,15 +1,21 @@
 {
     "batch_size": 32,
     "train_percentage": 0.7,
-    "steps_per_epoch": 2,
+    "steps_per_epoch": 15000,
     "n_epochs": 2,
     "n_workers": 6,
-    "data_format": "NHWC",
+
 
     "depth": [80, 80, 96],
     "max_pool": 10,
     "hidden_size": 128,
     "dropout": 0.5,
     "lr_decay": 1e-06,
-    "optimizer": "adam"
+    "optimizer": "adam",
+
+    "balanced_data": 1,
+    "multi_selex": 1,
+
+    "train_verbosity": 1
+
 }

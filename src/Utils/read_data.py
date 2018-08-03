@@ -12,7 +12,6 @@ from Utils.util_functions import get_model_parameters
 ########################
 # CONSTANTS
 ########################
-SELEX_LEN = 20
 PBM_LEN_TOTAL = 60
 PBM_LEN = 36
 
@@ -36,19 +35,34 @@ class DataPipeline(object):
 	def __init__(self, listOfSysArgs):
 		#print('+++++++++ DataPipeline was created +++++++++')
 		self.TF_index = listOfSysArgs[1].split('_')[0][2:]
+		# Train with all selexs if multi_selex is True, else, only with the first and last
+		self.multi_selex = parameters["multi_selex"]
 		# Load and pre-process the data
 		self.trainData, self.validationData, self.trainLabel, self.validationLabel, self.testData = \
 			self._get_data_and_labels_for_sample_number(listOfSysArgs)
 
 		# Create generators for the data
-		self.train_generator = DataGenerator(self.trainData, self.trainLabel, parameters['batch_size'],
-											 True, self.selex_size)
+		if self.multi_selex:
+			self.train_generator = []
+			self.validation_generator = []
+			self.test_generator = []
+			self.train_generator = [DataGenerator(self.trainData[i], self.trainLabel[i], parameters['batch_size'],
+												 True, self.selex_size) for i in range(self.number_of_selex-1)]
 
-		self.validation_generator = DataGenerator(self.validationData, self.validationLabel, parameters['batch_size'],
-												  True, self.selex_size)
+			self.validation_generator = [DataGenerator(self.validationData[i], self.validationLabel[i], parameters['batch_size'],
+													  True, self.selex_size) for i in range(self.number_of_selex-1)]
+
+		else:
+
+			self.train_generator = DataGenerator(self.trainData, self.trainLabel, parameters['batch_size'],
+												 True, self.selex_size)
+
+			self.validation_generator = DataGenerator(self.validationData, self.validationLabel, parameters['batch_size'],
+													  True, self.selex_size)
 
 		self.test_generator = TestDataGenerator(self.testData, parameters['batch_size'],
 												False, self.selex_size)
+
 
 		self.input_shape  = (max(PBM_LEN,self.selex_size),4)
 	#########################################################################
@@ -66,7 +80,7 @@ class DataPipeline(object):
 		selexFilesPathList = []
 		for file in range(2, len(listOfSysArgs)):
 			selexFilesPathList.append(os.path.abspath(os.path.join(trainDataRoot, listOfSysArgs[file])))
-
+		self.number_of_selex = len(selexFilesPathList)
 		# Read PBM file:
 		currTime = time.time()
 		pbmFile = self.read_pbm_file(pbmFilePath)
@@ -96,37 +110,73 @@ class DataPipeline(object):
 	def process_selex_data(self, selexsFilesList):
 
 		# Cycle 0 is False and the last cycle in True
-		numberLabelPositive = len(selexsFilesList[-1])
-		numberLabelNegative = len(selexsFilesList[0])
 
-		labelPositive = np.ones([numberLabelPositive, 1])
-		labelNegative = np.zeros([numberLabelNegative, 1])
+		if not self.multi_selex:
 
-		# Filter the data to create equal distribution of the positive and negative labels.
-		minNum = min(numberLabelPositive, numberLabelNegative)
-		if numberLabelPositive == minNum:
-			label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[-1]], axis=0)
+			numberLabelPositive = len(selexsFilesList[-1])
+			numberLabelNegative = len(selexsFilesList[0])
 
+			labelPositive = np.ones([numberLabelPositive, 1])
+			labelNegative = np.zeros([numberLabelNegative, 1])
+
+			if parameters["balanced_data"]:
+				# Filter the data to create equal distribution of the positive and negative labels.
+				minNum = min(numberLabelPositive, numberLabelNegative)
+				if numberLabelPositive == minNum:
+					label = np.concatenate((labelNegative[:minNum,:], labelPositive), axis=0)
+					selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[-1]], axis=0)
+
+				else:
+					label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
+					selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1][:minNum]], axis=0)
+			else:
+				label = np.concatenate((labelNegative, labelPositive), axis=0)
+				selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1]], axis=0)
+
+				# Extract only the strings without the 'count' value
+				data = selexArray[:, 0].reshape([-1, 1])
+
+				# Shuffle the Selex data
+				union = np.concatenate((data, label), axis=1)
+				union = np.random.permutation(union)
+				data, label = np.split(union, 2, axis=1)
+
+				# Divide into train and validation datasets
+				trainPercentage = parameters['train_percentage']
+				slice = round(trainPercentage * data.shape[0])
+				trainData, validationData = (data[:slice, :]),(data[slice:, :])
+				trainLabel,validationLabel = (label[:slice]),(label[slice:])
 		else:
-			label = np.concatenate((labelNegative, labelPositive[:minNum,:]), axis=0)
-			selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[-1][:minNum]], axis=0)
+			trainData = []
+			trainLabel = []
+			validationData = []
+			validationLabel = []
+			numberLabelNegative = len(selexsFilesList[0])
+			labelNegative = np.zeros([numberLabelNegative, 1])
+			for i in range(self.number_of_selex-1):
 
-		# Extract only the strings without the 'count' value
-		data = selexArray[:, 0].reshape([-1, 1])
+				numberLabelPositive = len(selexsFilesList[i+1])
+				labelPositive = np.ones([numberLabelPositive, 1])
 
-		# Shuffle the Selex data
-		union = np.concatenate((data, label), axis=1)
-		union = np.random.permutation(union)
-		data, label = np.split(union, 2, axis=1)
+				label = np.concatenate((labelNegative, labelPositive), axis=0)
+				selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[i+1]], axis=0)
 
-		# Divide into train and validation datasets
-		trainPercentage = parameters['train_percentage']
-		slice = round(trainPercentage * data.shape[0])
-		trainData, validationData = data[:slice,:], data[slice:,:]
-		trainLabel, validationLabel = label[:slice], label[slice:]
+				# Extract only the strings without the 'count' value
+				data = selexArray[:, 0].reshape([-1, 1])
 
-		#print('Train dimensions: {}.\nValidation dimensions: {}.'.format(np.shape(trainData), np.shape(validationData)))
+				# Shuffle the Selex data
+				union = np.concatenate((data, label), axis=1)
+				union = np.random.permutation(union)
+				data, label = np.split(union, 2, axis=1)
+
+				# Divide into train and validation datasets
+				trainPercentage = parameters['train_percentage']
+				slice = round(trainPercentage * data.shape[0])
+				trainData.append(data[:slice,:])
+				validationData.append(data[slice:,:])
+				trainLabel.append(label[:slice])
+				validationLabel.append(label[slice:])
+			#print('Train dimensions: {}.\nValidation dimensions: {}.'.format(np.shape(trainData), np.shape(validationData)))
 
 		return trainData, validationData, trainLabel, validationLabel
 

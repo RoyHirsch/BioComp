@@ -109,9 +109,10 @@ class DataPipeline(object):
 	#########################################################################
 	def process_selex_data(self, selexsFilesList):
 
-		# Cycle 0 is False and the last cycle in True
+
 
 		if not self.multi_selex:
+			# Cycle 0 is False and the last cycle is True
 
 			numberLabelPositive = len(selexsFilesList[-1])
 			numberLabelNegative = len(selexsFilesList[0])
@@ -147,6 +148,7 @@ class DataPipeline(object):
 				trainData, validationData = (data[:slice, :]),(data[slice:, :])
 				trainLabel,validationLabel = (label[:slice]),(label[slice:])
 		else:
+			# Cycle 0 is False and the the other cycles is True
 			trainData = []
 			trainLabel = []
 			validationData = []
@@ -158,8 +160,20 @@ class DataPipeline(object):
 				numberLabelPositive = len(selexsFilesList[i+1])
 				labelPositive = np.ones([numberLabelPositive, 1])
 
-				label = np.concatenate((labelNegative, labelPositive), axis=0)
-				selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[i+1]], axis=0)
+				if parameters["balanced_data"]:
+					# Filter the data to create equal distribution of the positive and negative labels.
+					minNum = min(numberLabelPositive, numberLabelNegative)
+					if numberLabelPositive == minNum:
+						label = np.concatenate((labelNegative[:minNum, :], labelPositive), axis=0)
+						selexArray = np.concatenate([selexsFilesList[0][:minNum], selexsFilesList[i+1]], axis=0)
+
+					else:
+						label = np.concatenate((labelNegative, labelPositive[:minNum, :]), axis=0)
+						selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[i+1][:minNum]], axis=0)
+
+				else:
+					label = np.concatenate((labelNegative, labelPositive), axis=0)
+					selexArray = np.concatenate([selexsFilesList[0], selexsFilesList[i+1]], axis=0)
 
 				# Extract only the strings without the 'count' value
 				data = selexArray[:, 0].reshape([-1, 1])

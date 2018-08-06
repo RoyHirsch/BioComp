@@ -1,12 +1,8 @@
 import os
 import time
 import keras
-import sys
 from keras.utils import to_categorical
-import numpy as np
-from keras.models import Sequential
 from keras.layers import *
-from keras.optimizers import SGD
 from Utils.util_functions import get_model_parameters
 
 ########################
@@ -32,8 +28,9 @@ parameters = get_model_parameters(params_file_name)
 #########################################################################
 class DataPipeline(object):
 
-	def __init__(self, listOfSysArgs):
+	def __init__(self, listOfSysArgs,WORK_DIR):
 		#print('+++++++++ DataPipeline was created +++++++++')
+		self.work_dir=WORK_DIR
 		self.TF_index = listOfSysArgs[1].split('_')[0][2:]
 		# Train with all selexs if multi_selex is True, else, only with the first and last
 		self.multi_selex = parameters["multi_selex"]
@@ -72,10 +69,9 @@ class DataPipeline(object):
 	#########################################################################
 	def _get_data_and_labels_for_sample_number(self, listOfSysArgs):
 
-		# TODO: needs to delete before submition !
 		# Get the absolute path of the Selex and PBM files
-		trainDataRoot = os.path.realpath(__file__ + "/../../../") + '/train/'
-
+		#trainDataRoot = os.path.realpath(__file__ + "/../../../") + '/train/'
+		trainDataRoot = self.work_dir
 		pbmFilePath = os.path.abspath(os.path.join(trainDataRoot, listOfSysArgs[1]))
 		selexFilesPathList = []
 		for file in range(2, len(listOfSysArgs)):
@@ -100,9 +96,14 @@ class DataPipeline(object):
 		return trainData, validationData, trainLabel, validationLabel, testData
 
 	#########################################################################
-	# Description: Naive implementation for extracting SELEX data.
-	#              Cycle '0' will be labeled as negative and the last cycle as positive.
-	#              Basically the function generates the train and validation data.
+	# Description:  Basically the function generates the train and validation data.
+	#              if multi selex mode is false:
+	# 			   Cycle '0' will be labeled as negative and the last cycle as positive,
+	#				other selex not uses.
+	#				if multi selex mode is True:
+	#				Train and validation sets are generate to each cycle 0 and cycle i pair
+	# 				where i=1...Num_of_selex. cycle 0 with negative label and cycle i with positive.
+	# 				The network trained with all these pairs.
 	#
 	# Input: selexsFilesList
 	# Output: trainData, validationData, trainLabel, validationLabel

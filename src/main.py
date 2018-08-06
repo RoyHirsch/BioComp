@@ -8,6 +8,8 @@ import numpy as np
 
 def _main():
 
+	WORK_DIR = os.path.abspath(__file__+ '/../../' )
+
 	if (len(sys.argv)) < 3:
 		print("Missing arguments, call should be : python main.py <pbm> <selex0> <selex1> <selex2> ... <selex5>")
 		exit(1)
@@ -18,7 +20,7 @@ def _main():
 	parameters = util_functions.get_model_parameters(params_file_name)
 
 	# Create data pipeline obj
-	dataPipe = read_data.DataPipeline(sys.argv)
+	dataPipe = read_data.DataPipeline(sys.argv,WORK_DIR)
 
 	# If multi_selex mode is enabled, we train over each selex with the same model
 	if parameters["multi_selex"]:
@@ -44,12 +46,12 @@ def _main():
 					n_epochs=parameters['n_epochs'],
 					n_workers=parameters['n_workers'])
 
-
+	# Calculate PBM predictions and AUPR
 	predictions = model.predict(dataPipe.test_generator, parameters['n_workers'])
 	AUPR = util_functions.getAUPR(dataPipe.testData, predictions)
 	print(AUPR)
 
-	# Sort and save fo files the PBM
+	# Sort and save fo files the PBM predictions
 	sortedPBMarray = util_functions.sortPBM(dataPipe.testData, predictions)
 	TF_index = dataPipe.TF_index
 	util_functions.dumpPBMtoFile(os.path.realpath(__file__ + "/../"), 'sortedPBM_TF' + str(TF_index), sortedPBMarray)

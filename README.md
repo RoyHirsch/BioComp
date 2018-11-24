@@ -1,6 +1,12 @@
 # BioComp
 
 Final project at the course: computational biology.
+Using nueral network for prediction of protein binding in DNA strings.
+
+We propose a generic model that can be trianed per protain type. The model can be trained for a spesific protein binding prediction.
+The data flow:
+
+The neural network architecture:
 
 Roy & Amit, BGU, 2018
 

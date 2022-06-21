@@ -10,7 +10,7 @@ html5lib==0.9999999
 idna==2.6
 Keras==2.1.6
 Markdown==2.6.11
-numpy==1.14.2
+numpy==1.22.0
 protobuf==3.5.2.post1
 PyYAML==3.12
 requests==2.18.4
